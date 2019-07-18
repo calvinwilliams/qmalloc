@@ -183,7 +183,7 @@
 			if( _p_unit->_p_unit_member_int_ < _p->_p_unit_member_int_ ) \
 			{ \
 				if( flag == 1 ) \
-					return _p; \
+					return _p_bak; \
 				_query_node = _query_node->rb_left ; \
 				if( _query_node == NULL ) \
 					return _p_bak; \

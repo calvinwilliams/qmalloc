@@ -1,9 +1,13 @@
 #include "qmalloc.h"
+#include <stdint.h>
+#include <inttypes.h>
 
 #include "rbtree_tpl.h"
 
-#define BLOCKS_PAGE_SIZE_DEFAULT	64*1024
-#define NORMAL_BLOCK_MAX_SIZE		(BLOCKS_PAGE_SIZE_DEFAULT-sizeof(struct QmallocBlock))
+#define _DEBUG			1
+
+#define BLOCKS_PAGE_SIZE	64*1024
+#define NORMAL_BLOCK_MAX_SIZE	(BLOCKS_PAGE_SIZE-sizeof(struct QmallocBlock))
 
 struct QmallocBlock
 {
@@ -63,7 +67,6 @@ void *_qmalloc( size_t size , char *FILE , int LINE )
 	{
 		struct QmallocBlock	block ;
 		struct QmallocBlock	*p_block ;
-		struct rb_node		*p ;
 		
 		block.block_size = sizeof(struct QmallocBlock) + size ;
 		p_block = QueryQmallocBlockTreeByBlockSizeNolessthan( & g_unused_root_qmalloc_block , & block ) ;
@@ -80,15 +83,15 @@ void *_qmalloc( size_t size , char *FILE , int LINE )
 			return p_block->block_base;
 		}
 		
-		p = rb_next(&(p_block->block_tree_node_order_by_size_allowduplicate)) ;
-		if( p )
-			p_block = container_of( p , struct QmallocBlock , block_tree_node_order_by_size_allowduplicate ) ;
-		if( p == NULL || p_block->block_size > NORMAL_BLOCK_MAX_SIZE )
+		if( p_block == NULL || p_block->block_size > NORMAL_BLOCK_MAX_SIZE )
 		{
-			p_block = (struct QmallocBlock *)malloc( BLOCKS_PAGE_SIZE_DEFAULT ) ;
+			p_block = (struct QmallocBlock *)malloc( BLOCKS_PAGE_SIZE ) ;
 			if( p_block == NULL )
 				return NULL;
-			if( BLOCKS_PAGE_SIZE_DEFAULT - size <= sizeof(struct QmallocBlock) )
+#if _DEBUG
+printf( "DEBUG : malloc ok , addr[%"PRIu64"] [%d]bytes\n" , (uint64_t)p_block , BLOCKS_PAGE_SIZE );
+#endif
+			if( BLOCKS_PAGE_SIZE - (sizeof(struct QmallocBlock)+size) < sizeof(struct QmallocBlock) )
 			{
 				p_block->block_addr = p_block ;
 				p_block->block_size = NORMAL_BLOCK_MAX_SIZE ;
@@ -113,22 +116,25 @@ void *_qmalloc( size_t size , char *FILE , int LINE )
 				LinkQmallocBlockToTreeByBlockSizeAllowduplicated( & g_used_root_qmalloc_block , p_block );
 				LinkQmallocBlockToTreeByBlockAddr( & g_used_root_qmalloc_block , p_block );
 				
-				p_remain_block->block_addr = p_block->block_base + 1 ;
-				p_block->block_size = BLOCKS_PAGE_SIZE_DEFAULT - sizeof(struct QmallocBlock) - size - sizeof(struct QmallocBlock) ;
-				p_block->alloc_source_file = NULL ;
-				p_block->alloc_source_line = 0 ;
-				p_block->free_source_file = NULL ;
-				p_block->free_source_line = 0 ;
-				LinkQmallocBlockToTreeByBlockSizeAllowduplicated( & g_unused_root_qmalloc_block , p_block );
-				LinkQmallocBlockToTreeByBlockAddr( & g_unused_root_qmalloc_block , p_block );
+				p_remain_block = (struct QmallocBlock *)(p_block->block_base+size) ;
+				p_remain_block->block_addr = p_remain_block ;
+				p_remain_block->block_size = BLOCKS_PAGE_SIZE - ( sizeof(struct QmallocBlock)+p_block->block_size + sizeof(struct QmallocBlock) ) ;
+				p_remain_block->alloc_source_file = NULL ;
+				p_remain_block->alloc_source_line = 0 ;
+				p_remain_block->free_source_file = NULL ;
+				p_remain_block->free_source_line = 0 ;
+				LinkQmallocBlockToTreeByBlockSizeAllowduplicated( & g_unused_root_qmalloc_block , p_remain_block );
+				LinkQmallocBlockToTreeByBlockAddr( & g_unused_root_qmalloc_block , p_remain_block );
 				
 				return p_block->block_base;
 			}
 		}
 		else
 		{
-			if( p_block->block_size - size < sizeof(struct QmallocBlock) )
+printf( "LIHUA - if - p_block->block_size[%zu] (sizeof(struct QmallocBlock)+size)[%zu]\n" , p_block->block_size , (sizeof(struct QmallocBlock)+size) );
+			if( p_block->block_size - (sizeof(struct QmallocBlock)+size) < sizeof(struct QmallocBlock) )
 			{
+printf( "111\n" );
 				UnlinkQmallocBlockFromTreeByBlockSize( & g_unused_root_qmalloc_block , p_block );
 				p_block->alloc_source_file = FILE ;
 				p_block->alloc_source_line = LINE ;
@@ -140,18 +146,24 @@ void *_qmalloc( size_t size , char *FILE , int LINE )
 			else
 			{
 				struct QmallocBlock	*p_remain_block ;
+				size_t			total_block_size ;
+				
+printf( "222\n" );
+				total_block_size = p_block->block_size ;
 				
 				UnlinkQmallocBlockFromTreeByBlockSize( & g_unused_root_qmalloc_block , p_block );
 				p_block->block_size = size ;
+printf( "LIHUA - p_block->block_size[%zu]\n" , p_block->block_size );
 				p_block->alloc_source_file = FILE ;
 				p_block->alloc_source_line = LINE ;
 				p_block->free_source_file = NULL ;
 				p_block->free_source_line = 0 ;
 				LinkQmallocBlockToTreeByBlockSizeAllowduplicated( & g_used_root_qmalloc_block , p_block );
 				
-				p_remain_block = p_block->block_addr + sizeof(struct QmallocBlock) + p_block->block_size ;
+				p_remain_block = (struct QmallocBlock *)(p_block->block_base+size) ;
 				p_remain_block->block_addr = p_remain_block ;
-				p_remain_block->block_size = p_block->block_size - size - sizeof(struct QmallocBlock) ;
+				p_remain_block->block_size = total_block_size - (sizeof(struct QmallocBlock)+size) ;
+printf( "LIHUA - p_remain_block->block_size[%zu]\n" , p_remain_block->block_size );
 				p_remain_block->alloc_source_file = NULL ;
 				p_remain_block->alloc_source_line = 0 ;
 				p_remain_block->free_source_file = NULL ;
@@ -168,6 +180,7 @@ void *_qmalloc( size_t size , char *FILE , int LINE )
 		struct QmallocBlock	block ;
 		struct QmallocBlock	*p_block ;
 		
+printf( "999\n" );
 		block.block_size = sizeof(struct QmallocBlock) + size ;
 		p_block = QueryQmallocBlockTreeByBlockSize( & g_unused_root_qmalloc_block , & block ) ;
 		if( p_block )
@@ -186,6 +199,9 @@ void *_qmalloc( size_t size , char *FILE , int LINE )
 		p_block = (struct QmallocBlock *)malloc( block.block_size ) ;
 		if( p_block == NULL )
 			return NULL;
+#if _DEBUG
+printf( "DEBUG : malloc ok , addr[%"PRIu64"] [%zu]bytes\n" , (uint64_t)p_block , block.block_size );
+#endif
 		p_block->block_addr = p_block ;
 		p_block->block_size = size ;
 		p_block->alloc_source_file = FILE ;
@@ -419,5 +435,20 @@ void _qfree_all()
 {
 	DestroyQmallocBlockTree(&g_unused_root_qmalloc_block);
 	return;
+}
+
+int _qget_block_header_size()
+{
+	return sizeof(struct QmallocBlock);
+}
+
+int _qget_normal_block_max_size()
+{
+	return NORMAL_BLOCK_MAX_SIZE;
+}
+
+int _qget_blocks_page_size()
+{
+	return BLOCKS_PAGE_SIZE;
 }
 

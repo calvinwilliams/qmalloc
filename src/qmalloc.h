@@ -36,6 +36,10 @@ int _qget_free_source_line( void *ptr );
 
 void _qfree_all();
 
+int _qget_block_header_size();
+int _qget_normal_block_max_size();
+int _qget_blocks_page_size();
+
 #ifdef __cplusplus
 extern }
 #endif
