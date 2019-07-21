@@ -170,43 +170,37 @@
 	_struct_UNIT_ *_this_func_( _struct_ENV_ *_p_env , _struct_UNIT_ *_p_unit ) \
 	{ \
 		struct rb_node		*_query_node = _p_env->_p_env_member_rbtree_.rb_node ; \
+		struct rb_node		*_next_query_node = NULL ; \
 		_struct_UNIT_		*_p = NULL ; \
-		_struct_UNIT_		*_p_bak = NULL ; \
-		signed char		flag ; \
+		_struct_UNIT_		*_p_next = NULL ; \
 		\
-		flag = 0 ; \
-		_p_bak = container_of( _query_node , _struct_UNIT_ , _p_unit_member_rbnode_ ) ; \
+		if( _query_node == NULL ) \
+			return NULL; \
 		while( _query_node ) \
 		{ \
 			_p = container_of( _query_node , _struct_UNIT_ , _p_unit_member_rbnode_ ) ; \
 			\
 			if( _p_unit->_p_unit_member_int_ < _p->_p_unit_member_int_ ) \
 			{ \
-				if( flag == 1 ) \
-					return _p_bak; \
+				_p_next = _p ; \
 				_query_node = _query_node->rb_left ; \
-				if( _query_node == NULL ) \
-					return _p_bak; \
-				flag = -1 ; \
 			} \
 			else if( _p_unit->_p_unit_member_int_ > _p->_p_unit_member_int_ ) \
 			{ \
-				if( flag == -1 ) \
-					return _p; \
+				_next_query_node = rb_next( _query_node ) ; \
+				if( _next_query_node ) \
+				{ \
+					_p_next = container_of( _next_query_node , _struct_UNIT_ , _p_unit_member_rbnode_ ) ; ; \
+				} \
 				_query_node = _query_node->rb_right ; \
-				if( _query_node == NULL ) \
-					return _p; \
-				flag = 1 ; \
 			} \
 			else \
 			{ \
 				return _p; \
 			} \
-			\
-			_p_bak = _p ; \
 		} \
 		\
-		return NULL; \
+		return _p_next; \
 	} \
 
 #define LINK_RBTREENODE_INT_ALLOWDUPLICATE( _this_func_ , _struct_ENV_ , _p_env_member_rbtree_ , _struct_UNIT_ , _p_unit_member_rbnode_ , _p_unit_member_int_ ) \
