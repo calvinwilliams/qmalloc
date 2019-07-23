@@ -189,9 +189,9 @@
 			{ \
 				_next_query_node = rb_next( _query_node ) ; \
 				if( _next_query_node ) \
-				{ \
-					_p_next = container_of( _next_query_node , _struct_UNIT_ , _p_unit_member_rbnode_ ) ; ; \
-				} \
+					_p_next = container_of( _next_query_node , _struct_UNIT_ , _p_unit_member_rbnode_ ) ; \
+				else \
+					_p_next = NULL ; \
 				_query_node = _query_node->rb_right ; \
 			} \
 			else \

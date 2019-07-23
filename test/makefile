@@ -9,10 +9,12 @@
 #@ c_FILE
 c_FILE		=	\
 			test1.c \
+			test2.c \
 
 ###### 目标文件、安装目录配置区
 include makeinstall
-BIN		=	test1
+BIN		=	test1	\
+			test2	\
 
 ###### 编译选项
 CFLAGS		=	$(_CFLAGS) \
@@ -43,4 +45,7 @@ include $(MKTPL2_HOME)/makeobj_$(MKTPL2_OS).inc
 ###### 目标文件依赖关系
 test1		:	test1.o
 	$(CC) -o $@ test1.o $(LFLAGS)
+
+test2		:	test2.o
+	$(CC) -o $@ test2.o $(LFLAGS)
 
