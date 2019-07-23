@@ -9,7 +9,7 @@
 	} \
 	else \
 	{ \
-		printf( "--------- qmalloc[%d] ok , addr[0x%p]\n" , size , p[i] ); \
+		printf( "--------- qmalloc[%d] ok , addr[%p]\n" , size , p[i] ); \
 		i++; \
 	} \
 
@@ -25,7 +25,7 @@ static void travel_by_size()
 		p = _qtravel_used_by_size(p) ;
 		if( p == NULL )
 			break;
-		printf( "  USED - size[%zu] p[0x%p] alloc_source_file[%s] alloc_source_line[%d] free_source_file[%s] free_source_line[%d]\n" , _qget_size(p) , p , _qget_alloc_source_file(p) , _qget_alloc_source_line(p) , _qget_free_source_file(p) , _qget_free_source_line(p) );
+		printf( "  USED - size[%zu] p[%p] alloc_source_file[%s] alloc_source_line[%d] free_source_file[%s] free_source_line[%d]\n" , _qget_size(p) , p , _qget_alloc_source_file(p) , _qget_alloc_source_line(p) , _qget_free_source_file(p) , _qget_free_source_line(p) );
 	}
 	
 	printf( "--- travel_by_size --- unused --- blocks_count[%zu] blocks_total_size[%zu]\n" , _qstat_unused_blocks_count() , _qstat_unused_blocks_total_size() );
@@ -36,7 +36,7 @@ static void travel_by_size()
 		p = _qtravel_unused_by_size(p) ;
 		if( p == NULL )
 			break;
-		printf( "UNUSED - size[%zu] p[0x%p] alloc_source_file[%s] alloc_source_line[%d] free_source_file[%s] free_source_line[%d]\n" , _qget_size(p) , p , _qget_alloc_source_file(p) , _qget_alloc_source_line(p) , _qget_free_source_file(p) , _qget_free_source_line(p) );
+		printf( "UNUSED - size[%zu] p[%p] alloc_source_file[%s] alloc_source_line[%d] free_source_file[%s] free_source_line[%d]\n" , _qget_size(p) , p , _qget_alloc_source_file(p) , _qget_alloc_source_line(p) , _qget_free_source_file(p) , _qget_free_source_line(p) );
 	}
 	
 	return;
@@ -54,7 +54,7 @@ static void travel_by_addr()
 		p = _qtravel_used_by_addr(p) ;
 		if( p == NULL )
 			break;
-		printf( "  USED - size[%zu] p[0x%p] alloc_source_file[%s] alloc_source_line[%d] free_source_file[%s] free_source_line[%d]\n" , _qget_size(p) , p , _qget_alloc_source_file(p) , _qget_alloc_source_line(p) , _qget_free_source_file(p) , _qget_free_source_line(p) );
+		printf( "  USED - size[%zu] p[%p] alloc_source_file[%s] alloc_source_line[%d] free_source_file[%s] free_source_line[%d]\n" , _qget_size(p) , p , _qget_alloc_source_file(p) , _qget_alloc_source_line(p) , _qget_free_source_file(p) , _qget_free_source_line(p) );
 	}
 	
 	printf( "--- travel_by_addr --- unused --- blocks_count[%zu] blocks_total_size[%zu]\n" , _qstat_unused_blocks_count() , _qstat_unused_blocks_total_size() );
@@ -65,7 +65,7 @@ static void travel_by_addr()
 		p = _qtravel_unused_by_addr(p) ;
 		if( p == NULL )
 			break;
-		printf( "UNUSED - size[%zu] p[0x%p] alloc_source_file[%s] alloc_source_line[%d] free_source_file[%s] free_source_line[%d]\n" , _qget_size(p) , p , _qget_alloc_source_file(p) , _qget_alloc_source_line(p) , _qget_free_source_file(p) , _qget_free_source_line(p) );
+		printf( "UNUSED - size[%zu] p[%p] alloc_source_file[%s] alloc_source_line[%d] free_source_file[%s] free_source_line[%d]\n" , _qget_size(p) , p , _qget_alloc_source_file(p) , _qget_alloc_source_line(p) , _qget_free_source_file(p) , _qget_free_source_line(p) );
 	}
 	
 	return;
@@ -80,6 +80,27 @@ int test( int round )
 	printf( "=================================== ROUND %d\n" , round );
 	
 	i = 0 ;
+	
+	size = 1 ;
+	p[i] = qmalloc( size ) ;
+	IF_P_EQ_NULL_EXIT
+	
+	travel_by_size();
+	travel_by_addr();
+	
+	size = 2 ;
+	p[i] = qmalloc( size ) ;
+	IF_P_EQ_NULL_EXIT
+	
+	travel_by_size();
+	travel_by_addr();
+	
+	size = 4 ;
+	p[i] = qmalloc( size ) ;
+	IF_P_EQ_NULL_EXIT
+	
+	travel_by_size();
+	travel_by_addr();
 	
 	size = 8 ;
 	p[i] = qmalloc( size ) ;
@@ -126,9 +147,9 @@ int test( int round )
 	count = i ;
 	for( i = 0 ; i < count ; i++ )
 	{
-		printf( "--------- qfree[0x%p] ...\n" , p[i] );
+		printf( "--------- qfree[%p] ...\n" , p[i] );
 		qfree( p[i] ) ;
-		printf( "--------- qfree[0x%p] ok\n" , p[i] );
+		printf( "--------- qfree[%p] ok\n" , p[i] );
 		
 		travel_by_size();
 		travel_by_addr();

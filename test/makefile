@@ -8,13 +8,15 @@
 ###### 源文件配置区
 #@ c_FILE
 c_FILE		=	\
-			test1.c \
-			test2.c \
+			test_basic.c \
+			press_qmalloc.c \
+			press_malloc.c \
 
 ###### 目标文件、安装目录配置区
 include makeinstall
-BIN		=	test1	\
-			test2	\
+BIN		=	test_basic	\
+			press_qmalloc	\
+			press_malloc	\
 
 ###### 编译选项
 CFLAGS		=	$(_CFLAGS) \
@@ -43,9 +45,12 @@ PREMAKE		=
 include $(MKTPL2_HOME)/makeobj_$(MKTPL2_OS).inc
 
 ###### 目标文件依赖关系
-test1		:	test1.o
-	$(CC) -o $@ test1.o $(LFLAGS)
+test_basic		:	test_basic.o
+	$(CC) -o $@ test_basic.o $(LFLAGS)
 
-test2		:	test2.o
-	$(CC) -o $@ test2.o $(LFLAGS)
+press_qmalloc		:	press_qmalloc.o
+	$(CC) -o $@ press_qmalloc.o $(LFLAGS)
+
+press_malloc		:	press_malloc.o
+	$(CC) -o $@ press_malloc.o $(_LFLAGS)
 
