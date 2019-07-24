@@ -3,7 +3,7 @@
 #include <sys/time.h>
 
 #define PRESS_ROUND	10000
-#define PRESS_COUNT	16
+#define PRESS_COUNT	4
 
 int press_qmalloc()
 {

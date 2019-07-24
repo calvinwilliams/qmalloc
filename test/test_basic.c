@@ -9,7 +9,7 @@
 	} \
 	else \
 	{ \
-		printf( "--------- qmalloc[%d] ok , addr[%p]\n" , size , p[i] ); \
+		printf( "test_basic : qmalloc[%d] ok , addr[%p]\n" , size , p[i] ); \
 		i++; \
 	} \
 
@@ -147,9 +147,9 @@ int test( int round )
 	count = i ;
 	for( i = 0 ; i < count ; i++ )
 	{
-		printf( "--------- qfree[%p] ...\n" , p[i] );
+		printf( "test_basic : qfree[%p] ...\n" , p[i] );
 		qfree( p[i] ) ;
-		printf( "--------- qfree[%p] ok\n" , p[i] );
+		printf( "test_basic : qfree[%p] ok\n" , p[i] );
 		
 		travel_by_size();
 		travel_by_addr();
@@ -171,9 +171,9 @@ int main()
 	
 	test(2);
 	
-	printf( "--------- _qfree_all_unused ...\n" );
+	printf( "test_basic : _qfree_all_unused ...\n" );
 	_qfree_all_unused();
-	printf( "--------- _qfree_all_unused ok\n" );
+	printf( "test_basic : _qfree_all_unused ok\n" );
 	
 	travel_by_size();
 	travel_by_addr();
