@@ -23,8 +23,6 @@ HDERINST	=	$(_HDERINST)
 ###### 编译选项
 CFLAGS		=	$(_CFLAGS) \
 
-CPPFLAGS	=	$(_CFLAGS) \
-
 ###### 链接选项
 LFLAGS		=	$(_LFLAGS) \
 
