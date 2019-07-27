@@ -76,7 +76,7 @@ printf( "_qmalloc : return[%p]\n" , NULL );
 		return NULL;
 	}
 	
-	size = MEMADDR_ALIGN( size ) ; /* 内存地址对齐，与rb_node.rb_parent_color配合 */
+	size = MEMADDR_ALIGN(sizeof(struct QmallocBlock)+size) - sizeof(struct QmallocBlock) ; /* 内存地址对齐，与rb_node.rb_parent_color配合 */
 	
 	if( size <= NORMAL_BLOCK_MAX_SIZE )
 	{
