@@ -4,7 +4,7 @@
 
 #include "rbtree_tpl.h"
 
-#define _DEBUG			1
+#define _DEBUG			0
 
 #define BLOCKS_PAGE_SIZE	4*1024*1024
 #define NORMAL_BLOCK_MAX_SIZE	(BLOCKS_PAGE_SIZE-sizeof(struct QmallocBlock))
@@ -16,7 +16,7 @@ struct QmallocBlock
 	void		*block_addr ;
 	struct rb_node	block_tree_node_order_by_addr ;
 	
-	size_t		block_size ;
+	size_t		data_size ;
 	struct rb_node	block_tree_node_order_by_size_allowduplicate ;
 	
 	unsigned char	alloc_page_flag ;
@@ -25,7 +25,7 @@ struct QmallocBlock
 	char		*free_source_file ;
 	size_t		free_source_line ;
 	
-	char		block_base[0] ;
+	char		data_addr[0] ;
 } ;
 
 struct QmallocRootBlock
@@ -41,10 +41,10 @@ __thread struct QmallocRootBlock	g_unused_root_qmalloc_block = { RB_ROOT,RB_ROOT
 
 __thread size_t				g_cache_blocks_max_size = 100*1024*1024 ;
 
-LINK_RBTREENODE_INT_ALLOWDUPLICATE( LinkQmallocBlockToTreeByBlockSizeAllowduplicated , struct QmallocRootBlock , block_tree_order_by_size_allowduplicate , struct QmallocBlock , block_tree_node_order_by_size_allowduplicate , block_size )
+LINK_RBTREENODE_INT_ALLOWDUPLICATE( LinkQmallocBlockToTreeByBlockSizeAllowduplicated , struct QmallocRootBlock , block_tree_order_by_size_allowduplicate , struct QmallocBlock , block_tree_node_order_by_size_allowduplicate , data_size )
 UNLINK_RBTREENODE( UnlinkQmallocBlockFromTreeByBlockSize , struct QmallocRootBlock , block_tree_order_by_size_allowduplicate , struct QmallocBlock , block_tree_node_order_by_size_allowduplicate )
-QUERY_RBTREENODE_INT( QueryQmallocBlockTreeByBlockSize , struct QmallocRootBlock , block_tree_order_by_size_allowduplicate , struct QmallocBlock , block_tree_node_order_by_size_allowduplicate , block_size )
-QUERY_RBTREENODE_INT_NOLESSTHAN( QueryQmallocBlockTreeByBlockSizeNolessthan , struct QmallocRootBlock , block_tree_order_by_size_allowduplicate , struct QmallocBlock , block_tree_node_order_by_size_allowduplicate , block_size )
+QUERY_RBTREENODE_INT( QueryQmallocBlockTreeByBlockSize , struct QmallocRootBlock , block_tree_order_by_size_allowduplicate , struct QmallocBlock , block_tree_node_order_by_size_allowduplicate , data_size )
+QUERY_RBTREENODE_INT_NOLESSTHAN( QueryQmallocBlockTreeByBlockSizeNolessthan , struct QmallocRootBlock , block_tree_order_by_size_allowduplicate , struct QmallocBlock , block_tree_node_order_by_size_allowduplicate , data_size )
 TRAVEL_RBTREENODE( TravelQmallocBlockTreeByBlockSize , struct QmallocRootBlock , block_tree_order_by_size_allowduplicate , struct QmallocBlock , block_tree_node_order_by_size_allowduplicate )
 
 int LinkQmallocBlockToTreeByBlockSizeAllowduplicated( struct QmallocRootBlock *block_tree , struct QmallocBlock *p_block );
@@ -66,10 +66,15 @@ struct QmallocBlock *TravelQmallocBlockTreeByBlockAddr( struct QmallocRootBlock 
 void *_qmalloc( size_t size , char *FILE , int LINE )
 {
 #if _DEBUG
-printf( "_qmlloc : size[%zu] FILE[%s] LINE[%d]\n" , size , FILE , LINE );
+printf( "_qmalloc : size[%zu] FILE[%s] LINE[%d]\n" , size , FILE , LINE );
 #endif
 	if( size == 0 )
+	{
+#if _DEBUG
+printf( "_qmalloc : return[%p]\n" , NULL );
+#endif
 		return NULL;
+	}
 	
 	size = MEMADDR_ALIGN( size ) ; /* 内存地址对齐，与rb_node.rb_parent_color配合 */
 	
@@ -78,15 +83,15 @@ printf( "_qmlloc : size[%zu] FILE[%s] LINE[%d]\n" , size , FILE , LINE );
 		struct QmallocBlock	block ;
 		struct QmallocBlock	*p_block ;
 		
-		block.block_size = sizeof(struct QmallocBlock) + size ;
+		block.data_size = sizeof(struct QmallocBlock) + size ;
 		p_block = QueryQmallocBlockTreeByBlockSizeNolessthan( & g_unused_root_qmalloc_block , & block ) ;
 #if _DEBUG
 if( p_block == NULL )
-	printf( "_qmlloc : QueryQmallocBlockTreeByBlockSizeNolessthan [%zu][%zu]bytes return NULL\n" , sizeof(struct QmallocBlock) , size );
+	printf( "_qmalloc : QueryQmallocBlockTreeByBlockSizeNolessthan [%zu][%zu]bytes return NULL\n" , sizeof(struct QmallocBlock) , size );
 else
-	printf( "_qmlloc : QueryQmallocBlockTreeByBlockSizeNolessthan [%zu][%zu]bytes ok , addr[%p] [%zu]bytes\n" , sizeof(struct QmallocBlock) , size , p_block , p_block->block_size );
+	printf( "_qmalloc : QueryQmallocBlockTreeByBlockSizeNolessthan [%zu][%zu]bytes ok , addr[%p] [%zu]bytes\n" , sizeof(struct QmallocBlock) , size , p_block , p_block->data_size );
 #endif
-		if( p_block && p_block->block_size == size )
+		if( p_block && p_block->data_size == size )
 		{
 			UnlinkQmallocBlockFromTreeByBlockSize( & g_unused_root_qmalloc_block , p_block );
 			UnlinkQmallocBlockFromTreeByBlockAddr( & g_unused_root_qmalloc_block , p_block );
@@ -96,30 +101,40 @@ else
 			p_block->free_source_line = 0 ;
 			LinkQmallocBlockToTreeByBlockSizeAllowduplicated( & g_used_root_qmalloc_block , p_block );
 			LinkQmallocBlockToTreeByBlockAddr( & g_used_root_qmalloc_block , p_block );
-			return p_block->block_base;
+#if _DEBUG
+printf( "_qmalloc : return[%p]\n" , p_block->data_addr );
+#endif
+			return p_block->data_addr;
 		}
 		
-		if( p_block == NULL || p_block->block_size > NORMAL_BLOCK_MAX_SIZE )
+		if( p_block == NULL || p_block->data_size > NORMAL_BLOCK_MAX_SIZE )
 		{
 #if _DEBUG
 if( p_block == NULL )
-	printf( "_qmlloc : no unused block\n" );
+	printf( "_qmalloc : no unused block\n" );
 else
-	printf( "_qmlloc : no unused block less than\n" );
+	printf( "_qmalloc : no unused block less than\n" );
 #endif
 			p_block = (struct QmallocBlock *)malloc( BLOCKS_PAGE_SIZE ) ;
 			if( p_block == NULL )
-				return NULL;
+			{
 #if _DEBUG
-printf( "_qmlloc : malloc ok , addr[%p] [%d]bytes\n" , p_block , BLOCKS_PAGE_SIZE );
+printf( "_qmalloc : call malloc failed , errno[%d]\n" , errno );
+printf( "_qmalloc : return[%p]\n" , NULL );
+#endif
+				return NULL;
+			}
+			
+#if _DEBUG
+printf( "_qmalloc : call malloc ok , addr[%p] size[%d]bytes data_size[%zu] data_addr[%p]\n" , p_block , BLOCKS_PAGE_SIZE , BLOCKS_PAGE_SIZE-sizeof(struct QmallocBlock) , p_block->data_addr );
 #endif
 			if( BLOCKS_PAGE_SIZE - (sizeof(struct QmallocBlock)+size) < sizeof(struct QmallocBlock) )
 			{
 #if _DEBUG
-printf( "_qmlloc : entire BLOCKS_PAGE_SIZE[%d]bytes to used\n" , BLOCKS_PAGE_SIZE );
+printf( "_qmalloc : entire BLOCKS_PAGE_SIZE[%d]bytes to used\n" , BLOCKS_PAGE_SIZE );
 #endif
 				p_block->block_addr = p_block ;
-				p_block->block_size = NORMAL_BLOCK_MAX_SIZE ;
+				p_block->data_size = NORMAL_BLOCK_MAX_SIZE ;
 				p_block->alloc_page_flag = 1 ;
 				p_block->alloc_source_file = FILE ;
 				p_block->alloc_source_line = LINE ;
@@ -129,19 +144,22 @@ printf( "_qmlloc : entire BLOCKS_PAGE_SIZE[%d]bytes to used\n" , BLOCKS_PAGE_SIZ
 				LinkQmallocBlockToTreeByBlockSizeAllowduplicated( & g_used_root_qmalloc_block , p_block );
 				LinkQmallocBlockToTreeByBlockAddr( & g_used_root_qmalloc_block , p_block );
 				g_used_root_qmalloc_block.blocks_count++;
-				g_used_root_qmalloc_block.blocks_total_size += p_block->block_size ;
+				g_used_root_qmalloc_block.blocks_total_size += sizeof(struct QmallocBlock)+p_block->data_size ;
 				
-				return p_block->block_base;
+#if _DEBUG
+printf( "_qmalloc : return[%p]\n" , p_block->data_addr );
+#endif
+				return p_block->data_addr;
 			}
 			else
 			{
-				struct QmallocBlock	*p_remain_block ;
+				struct QmallocBlock	*p_next_block ;
 				
 #if _DEBUG
-printf( "_qmlloc : BLOCKS_PAGE_SIZE[%d]bytes divide [%zu][%zu]bytes to used and [%zu][%zu]bytes to unused\n" , BLOCKS_PAGE_SIZE , sizeof(struct QmallocBlock) , size , sizeof(struct QmallocBlock) , BLOCKS_PAGE_SIZE-( sizeof(struct QmallocBlock)+size+sizeof(struct QmallocBlock) ) );
+printf( "_qmalloc : BLOCKS_PAGE_SIZE[%d]bytes divide [%zu][%zu]bytes to used and [%zu][%zu]bytes to unused\n" , BLOCKS_PAGE_SIZE , sizeof(struct QmallocBlock) , size , sizeof(struct QmallocBlock) , BLOCKS_PAGE_SIZE-( sizeof(struct QmallocBlock)+size+sizeof(struct QmallocBlock) ) );
 #endif
 				p_block->block_addr = p_block ;
-				p_block->block_size = size ;
+				p_block->data_size = size ;
 				p_block->alloc_page_flag = 1 ;
 				p_block->alloc_source_file = FILE ;
 				p_block->alloc_source_line = LINE ;
@@ -150,34 +168,37 @@ printf( "_qmlloc : BLOCKS_PAGE_SIZE[%d]bytes divide [%zu][%zu]bytes to used and 
 				LinkQmallocBlockToTreeByBlockSizeAllowduplicated( & g_used_root_qmalloc_block , p_block );
 				LinkQmallocBlockToTreeByBlockAddr( & g_used_root_qmalloc_block , p_block );
 				g_used_root_qmalloc_block.blocks_count++;
-				g_used_root_qmalloc_block.blocks_total_size += p_block->block_size ;
+				g_used_root_qmalloc_block.blocks_total_size += sizeof(struct QmallocBlock)+p_block->data_size ;
 				
-				p_remain_block = (struct QmallocBlock *)(p_block->block_base+size) ;
-				p_remain_block->block_addr = p_remain_block ;
-				p_remain_block->block_size = BLOCKS_PAGE_SIZE - ( sizeof(struct QmallocBlock)+p_block->block_size+sizeof(struct QmallocBlock) ) ;
+				p_next_block = (struct QmallocBlock *)(p_block->data_addr+size) ;
+				p_next_block->block_addr = p_next_block ;
+				p_next_block->data_size = (BLOCKS_PAGE_SIZE-sizeof(struct QmallocBlock)) - (sizeof(struct QmallocBlock)+p_block->data_size) ;
 				p_block->alloc_page_flag = 0 ;
-				p_remain_block->alloc_source_file = NULL ;
-				p_remain_block->alloc_source_line = 0 ;
-				p_remain_block->free_source_file = NULL ;
-				p_remain_block->free_source_line = 0 ;
-				LinkQmallocBlockToTreeByBlockSizeAllowduplicated( & g_unused_root_qmalloc_block , p_remain_block );
-				LinkQmallocBlockToTreeByBlockAddr( & g_unused_root_qmalloc_block , p_remain_block );
+				p_next_block->alloc_source_file = NULL ;
+				p_next_block->alloc_source_line = 0 ;
+				p_next_block->free_source_file = NULL ;
+				p_next_block->free_source_line = 0 ;
+				LinkQmallocBlockToTreeByBlockSizeAllowduplicated( & g_unused_root_qmalloc_block , p_next_block );
+				LinkQmallocBlockToTreeByBlockAddr( & g_unused_root_qmalloc_block , p_next_block );
 				g_unused_root_qmalloc_block.blocks_count++;
-				g_unused_root_qmalloc_block.blocks_total_size += p_remain_block->block_size ;
+				g_unused_root_qmalloc_block.blocks_total_size += sizeof(struct QmallocBlock)+p_next_block->data_size ;
 				
-				return p_block->block_base;
+#if _DEBUG
+printf( "_qmalloc : return[%p]\n" , p_block->data_addr );
+#endif
+				return p_block->data_addr;
 			}
 		}
 		else
 		{
-			if( p_block->block_size - (sizeof(struct QmallocBlock)+size) < sizeof(struct QmallocBlock) )
+			if( p_block->data_size - (sizeof(struct QmallocBlock)+size) < sizeof(struct QmallocBlock) )
 			{
 #if _DEBUG
-printf( "_qmlloc : entire block size[%zu]bytes to used\n" , p_block->block_size );
+printf( "_qmalloc : entire block size[%zu]bytes to used\n" , p_block->data_size );
 #endif
 				UnlinkQmallocBlockFromTreeByBlockSize( & g_unused_root_qmalloc_block , p_block );
 				g_unused_root_qmalloc_block.blocks_count--;
-				g_unused_root_qmalloc_block.blocks_total_size -= p_block->block_size ;
+				g_unused_root_qmalloc_block.blocks_total_size -= p_block->data_size ;
 				
 				p_block->alloc_source_file = FILE ;
 				p_block->alloc_source_line = LINE ;
@@ -186,26 +207,29 @@ printf( "_qmlloc : entire block size[%zu]bytes to used\n" , p_block->block_size 
 				
 				LinkQmallocBlockToTreeByBlockSizeAllowduplicated( & g_used_root_qmalloc_block , p_block );
 				g_used_root_qmalloc_block.blocks_count++;
-				g_used_root_qmalloc_block.blocks_total_size += p_block->block_size ;
+				g_used_root_qmalloc_block.blocks_total_size += sizeof(struct QmallocBlock)+p_block->data_size ;
 				
-				return p_block->block_base;
+#if _DEBUG
+printf( "_qmalloc : return[%p]\n" , p_block->data_addr );
+#endif
+				return p_block->data_addr;
 			}
 			else
 			{
-				struct QmallocBlock	*p_remain_block ;
+				struct QmallocBlock	*p_next_block ;
 				size_t			total_block_size ;
 				
-				total_block_size = p_block->block_size ;
+				total_block_size = p_block->data_size ;
 #if _DEBUG
-printf( "_qmlloc : block size[%zu]bytes divide [%zu][%zu]bytes to used and [%zu][%zu]bytes to unused\n" , total_block_size , sizeof(struct QmallocBlock) , size , sizeof(struct QmallocBlock) , total_block_size-(sizeof(struct QmallocBlock)+size+sizeof(struct QmallocBlock)) );
+printf( "_qmalloc : block size[%zu]bytes divide [%zu][%zu]bytes to used and [%zu][%zu]bytes to unused\n" , total_block_size , sizeof(struct QmallocBlock) , size , sizeof(struct QmallocBlock) , total_block_size-(sizeof(struct QmallocBlock)+size+sizeof(struct QmallocBlock)) );
 #endif
 				
 				UnlinkQmallocBlockFromTreeByBlockSize( & g_unused_root_qmalloc_block , p_block );
 				UnlinkQmallocBlockFromTreeByBlockAddr( & g_unused_root_qmalloc_block , p_block );
 				g_unused_root_qmalloc_block.blocks_count--;
-				g_unused_root_qmalloc_block.blocks_total_size -= p_block->block_size ;
+				g_unused_root_qmalloc_block.blocks_total_size -= sizeof(struct QmallocBlock)+p_block->data_size ;
 				
-				p_block->block_size = size ;
+				p_block->data_size = size ;
 				p_block->alloc_source_file = FILE ;
 				p_block->alloc_source_line = LINE ;
 				p_block->free_source_file = NULL ;
@@ -213,22 +237,25 @@ printf( "_qmlloc : block size[%zu]bytes divide [%zu][%zu]bytes to used and [%zu]
 				LinkQmallocBlockToTreeByBlockSizeAllowduplicated( & g_used_root_qmalloc_block , p_block );
 				LinkQmallocBlockToTreeByBlockAddr( & g_used_root_qmalloc_block , p_block );
 				g_used_root_qmalloc_block.blocks_count++;
-				g_used_root_qmalloc_block.blocks_total_size += p_block->block_size ;
+				g_used_root_qmalloc_block.blocks_total_size += sizeof(struct QmallocBlock)+p_block->data_size ;
 				
-				p_remain_block = (struct QmallocBlock *)(p_block->block_base+size) ;
-				p_remain_block->block_addr = p_remain_block ;
-				p_remain_block->block_size = total_block_size - (sizeof(struct QmallocBlock)+size+sizeof(struct QmallocBlock)) ;
-				p_remain_block->alloc_page_flag = 0 ;
-				p_remain_block->alloc_source_file = NULL ;
-				p_remain_block->alloc_source_line = 0 ;
-				p_remain_block->free_source_file = NULL ;
-				p_remain_block->free_source_line = 0 ;
-				LinkQmallocBlockToTreeByBlockSizeAllowduplicated( & g_unused_root_qmalloc_block , p_remain_block );
-				LinkQmallocBlockToTreeByBlockAddr( & g_unused_root_qmalloc_block , p_remain_block );
+				p_next_block = (struct QmallocBlock *)(p_block->data_addr+size) ;
+				p_next_block->block_addr = p_next_block ;
+				p_next_block->data_size = total_block_size - (sizeof(struct QmallocBlock)+size) ;
+				p_next_block->alloc_page_flag = 0 ;
+				p_next_block->alloc_source_file = NULL ;
+				p_next_block->alloc_source_line = 0 ;
+				p_next_block->free_source_file = NULL ;
+				p_next_block->free_source_line = 0 ;
+				LinkQmallocBlockToTreeByBlockSizeAllowduplicated( & g_unused_root_qmalloc_block , p_next_block );
+				LinkQmallocBlockToTreeByBlockAddr( & g_unused_root_qmalloc_block , p_next_block );
 				g_unused_root_qmalloc_block.blocks_count++;
-				g_unused_root_qmalloc_block.blocks_total_size += p_remain_block->block_size ;
+				g_unused_root_qmalloc_block.blocks_total_size += sizeof(struct QmallocBlock)+p_next_block->data_size ;
 				
-				return p_block->block_base;
+#if _DEBUG
+printf( "_qmalloc : return[%p]\n" , p_block->data_addr );
+#endif
+				return p_block->data_addr;
 			}
 		}
 	}
@@ -237,14 +264,14 @@ printf( "_qmlloc : block size[%zu]bytes divide [%zu][%zu]bytes to used and [%zu]
 		struct QmallocBlock	block ;
 		struct QmallocBlock	*p_block ;
 		
-		block.block_size = sizeof(struct QmallocBlock) + size ;
+		block.data_size = sizeof(struct QmallocBlock) + size ;
 		p_block = QueryQmallocBlockTreeByBlockSize( & g_unused_root_qmalloc_block , & block ) ;
 		if( p_block )
 		{
 			UnlinkQmallocBlockFromTreeByBlockSize( & g_unused_root_qmalloc_block , p_block );
 			UnlinkQmallocBlockFromTreeByBlockAddr( & g_unused_root_qmalloc_block , p_block );
 			g_unused_root_qmalloc_block.blocks_count--;
-			g_unused_root_qmalloc_block.blocks_total_size -= p_block->block_size ;
+			g_unused_root_qmalloc_block.blocks_total_size -= sizeof(struct QmallocBlock)+p_block->data_size ;
 			
 			p_block->alloc_source_file = FILE ;
 			p_block->alloc_source_line = LINE ;
@@ -254,19 +281,29 @@ printf( "_qmlloc : block size[%zu]bytes divide [%zu][%zu]bytes to used and [%zu]
 			LinkQmallocBlockToTreeByBlockSizeAllowduplicated( & g_used_root_qmalloc_block , p_block );
 			LinkQmallocBlockToTreeByBlockAddr( & g_used_root_qmalloc_block , p_block );
 			g_used_root_qmalloc_block.blocks_count++;
-			g_used_root_qmalloc_block.blocks_total_size += p_block->block_size ;
+			g_used_root_qmalloc_block.blocks_total_size += sizeof(struct QmallocBlock)+p_block->data_size ;
 			
-			return p_block->block_base;
+#if _DEBUG
+printf( "_qmalloc : return[%p]\n" , p_block->data_addr );
+#endif
+			return p_block->data_addr;
 		}
 		
-		p_block = (struct QmallocBlock *)malloc( block.block_size ) ;
+		p_block = (struct QmallocBlock *)malloc( block.data_size ) ;
 		if( p_block == NULL )
-			return NULL;
+		{
 #if _DEBUG
-printf( "_qmlloc : malloc ok , addr[%p] [%zu][%zu]bytes\n" , p_block , sizeof(struct QmallocBlock) , size );
+printf( "_qmalloc : call malloc failed , errno[%d]\n" , errno );
+printf( "_qmalloc : return[%p]\n" , NULL );
+#endif
+			return NULL;
+		}
+		
+#if _DEBUG
+printf( "_qmalloc : call malloc ok , addr[%p] size[%zu][%zu]bytes data[%p]\n" , p_block , sizeof(struct QmallocBlock) , size , p_block->data_addr );
 #endif
 		p_block->block_addr = p_block ;
-		p_block->block_size = size ;
+		p_block->data_size = size ;
 		p_block->alloc_page_flag = 1 ;
 		p_block->alloc_source_file = FILE ;
 		p_block->alloc_source_line = LINE ;
@@ -276,9 +313,12 @@ printf( "_qmlloc : malloc ok , addr[%p] [%zu][%zu]bytes\n" , p_block , sizeof(st
 		LinkQmallocBlockToTreeByBlockSizeAllowduplicated( & g_used_root_qmalloc_block , p_block );
 		LinkQmallocBlockToTreeByBlockAddr( & g_used_root_qmalloc_block , p_block );
 		g_used_root_qmalloc_block.blocks_count++;
-		g_used_root_qmalloc_block.blocks_total_size += p_block->block_size ;
+		g_used_root_qmalloc_block.blocks_total_size += sizeof(struct QmallocBlock)+p_block->data_size ;
 		
-		return p_block->block_base;
+#if _DEBUG
+printf( "_qmalloc : return[%p]\n" , p_block->data_addr );
+#endif
+		return p_block->data_addr;
 	}
 }
 
@@ -289,6 +329,9 @@ void _qfree( void *ptr , char *FILE , int LINE )
 	struct QmallocBlock	*p_next_block_order_by_addr ;
 	struct rb_node		*p ;
 	
+#if _DEBUG
+printf( "_qfree : ptr[%p]\n" , ptr );
+#endif
 	if( ptr == NULL )
 		return;
 	
@@ -297,7 +340,7 @@ void _qfree( void *ptr , char *FILE , int LINE )
 	UnlinkQmallocBlockFromTreeByBlockSize( & g_used_root_qmalloc_block , p_block );
 	UnlinkQmallocBlockFromTreeByBlockAddr( & g_used_root_qmalloc_block , p_block );
 	g_used_root_qmalloc_block.blocks_count--;
-	g_used_root_qmalloc_block.blocks_total_size -= p_block->block_size ;
+	g_used_root_qmalloc_block.blocks_total_size -= sizeof(struct QmallocBlock)+p_block->data_size ;
 	
 	p_block->free_source_file = FILE ;
 	p_block->free_source_line = LINE ;
@@ -305,26 +348,25 @@ void _qfree( void *ptr , char *FILE , int LINE )
 	LinkQmallocBlockToTreeByBlockSizeAllowduplicated( & g_unused_root_qmalloc_block , p_block );
 	LinkQmallocBlockToTreeByBlockAddr( & g_unused_root_qmalloc_block , p_block );
 	g_unused_root_qmalloc_block.blocks_count++;
-	g_unused_root_qmalloc_block.blocks_total_size += p_block->block_size ;
+	g_unused_root_qmalloc_block.blocks_total_size += sizeof(struct QmallocBlock)+p_block->data_size ;
 	
 	p = rb_prev(&(p_block->block_tree_node_order_by_addr)) ;
 	if( p )
 	{
 		p_prev_block_order_by_addr = container_of( p , struct QmallocBlock , block_tree_node_order_by_addr ) ;
 #if _DEBUG
-printf( "_qfree : on qfree , prev_block[%p] prev_block_size[%zu] , block[%p] block_size[%zu]\n" , p_prev_block_order_by_addr->block_addr , p_prev_block_order_by_addr->block_size , p_block->block_addr , p_block->block_size );
+printf( "_qfree : prev_block[%p] prev_block_size[%zu] , block[%p] data_size[%zu]\n" , p_prev_block_order_by_addr->block_addr , p_prev_block_order_by_addr->data_size , p_block->block_addr , p_block->data_size );
 #endif
-		if( p_prev_block_order_by_addr->block_base + p_prev_block_order_by_addr->block_size == p_block->block_addr )
+		if( p_prev_block_order_by_addr->data_addr + p_prev_block_order_by_addr->data_size == p_block->block_addr )
 		{
-			p_prev_block_order_by_addr->block_size += sizeof(struct QmallocBlock) + p_block->block_size ;
+			p_prev_block_order_by_addr->data_size += sizeof(struct QmallocBlock)+p_block->data_size ;
 			
 #if _DEBUG
-printf( "_qfree : on qfree , unlink block[%p] block_size[%zu]\n" , p_block->block_addr , p_block->block_size );
+printf( "_qfree : unlink block[%p] data_size[%zu]\n" , p_block->block_addr , p_block->data_size );
 #endif
 			UnlinkQmallocBlockFromTreeByBlockSize( & g_unused_root_qmalloc_block , p_block );
 			UnlinkQmallocBlockFromTreeByBlockAddr( & g_unused_root_qmalloc_block , p_block );
 			g_unused_root_qmalloc_block.blocks_count--;
-			g_unused_root_qmalloc_block.blocks_total_size += sizeof(struct QmallocBlock) ;
 			
 			p_block = p_prev_block_order_by_addr ;
 		}
@@ -335,31 +377,30 @@ printf( "_qfree : on qfree , unlink block[%p] block_size[%zu]\n" , p_block->bloc
 	{
 		p_next_block_order_by_addr = container_of( p , struct QmallocBlock , block_tree_node_order_by_addr ) ;
 #if _DEBUG
-printf( "_qfree : on qfree , block[%p] block_size[%zu] , next_block[%p] next_block_size[%zu]\n" , p_block->block_addr , p_block->block_size , p_next_block_order_by_addr->block_addr , p_next_block_order_by_addr->block_size );
+printf( "_qfree : block[%p] data_size[%zu] , next_block[%p] next_block_size[%zu]\n" , p_block->block_addr , p_block->data_size , p_next_block_order_by_addr->block_addr , p_next_block_order_by_addr->data_size );
 #endif
-		if( p_block->block_base + p_block->block_size == p_next_block_order_by_addr->block_addr )
+		if( p_block->data_addr + p_block->data_size == p_next_block_order_by_addr->block_addr )
 		{
-			p_block->block_size += sizeof(struct QmallocBlock) + p_next_block_order_by_addr->block_size ;
+			p_block->data_size += sizeof(struct QmallocBlock)+p_next_block_order_by_addr->data_size ;
 			
 #if _DEBUG
-printf( "_qfree : on qfree , unlink next_block[%p] next_block_size[%zu]\n" , p_next_block_order_by_addr->block_addr , p_next_block_order_by_addr->block_size );
+printf( "_qfree : unlink next_block[%p] next_block_size[%zu]\n" , p_next_block_order_by_addr->block_addr , p_next_block_order_by_addr->data_size );
 #endif
 			UnlinkQmallocBlockFromTreeByBlockSize( & g_unused_root_qmalloc_block , p_next_block_order_by_addr );
 			UnlinkQmallocBlockFromTreeByBlockAddr( & g_unused_root_qmalloc_block , p_next_block_order_by_addr );
 			g_unused_root_qmalloc_block.blocks_count--;
-			g_unused_root_qmalloc_block.blocks_total_size += sizeof(struct QmallocBlock) ;
 		}
 	}
 	
 	if( g_unused_root_qmalloc_block.blocks_total_size > g_cache_blocks_max_size && p_block->alloc_page_flag == 1 )
 	{
 #if _DEBUG
-printf( "_qfree : on qfree , free[%p]\n" , p_block );
+printf( "_qfree : call free[%p]\n" , p_block );
 #endif
 		UnlinkQmallocBlockFromTreeByBlockSize( & g_unused_root_qmalloc_block , p_block );
 		UnlinkQmallocBlockFromTreeByBlockAddr( & g_unused_root_qmalloc_block , p_block );
 		g_unused_root_qmalloc_block.blocks_count--;
-		g_unused_root_qmalloc_block.blocks_total_size -= p_block->block_size ;
+		g_unused_root_qmalloc_block.blocks_total_size -= sizeof(struct QmallocBlock)+p_block->data_size ;
 		free( p_block );
 	}
 	
@@ -439,16 +480,16 @@ void *_qtravel_used_by_size( void *ptr )
 		if( p == NULL )
 			return NULL;
 		p_block = container_of( p , struct QmallocBlock , block_tree_node_order_by_size_allowduplicate ) ;
-		return p_block->block_base;
+		return p_block->data_addr;
 	}
 	else
 	{
-		p_block = container_of( ptr , struct QmallocBlock , block_base ) ;
+		p_block = container_of( ptr , struct QmallocBlock , data_addr ) ;
 		p = rb_next(&(p_block->block_tree_node_order_by_size_allowduplicate)) ;
 		if( p == NULL )
 			return NULL;
 		p_block = container_of( p , struct QmallocBlock , block_tree_node_order_by_size_allowduplicate ) ;
-		return p_block->block_base;
+		return p_block->data_addr;
 	}
 }
 
@@ -463,16 +504,16 @@ void *_qtravel_unused_by_size( void *ptr )
 		if( p == NULL )
 			return NULL;
 		p_block = container_of( p , struct QmallocBlock , block_tree_node_order_by_size_allowduplicate ) ;
-		return p_block->block_base;
+		return p_block->data_addr;
 	}
 	else
 	{
-		p_block = container_of( ptr , struct QmallocBlock , block_base ) ;
+		p_block = container_of( ptr , struct QmallocBlock , data_addr ) ;
 		p = rb_next(&(p_block->block_tree_node_order_by_size_allowduplicate)) ;
 		if( p == NULL )
 			return NULL;
 		p_block = container_of( p , struct QmallocBlock , block_tree_node_order_by_size_allowduplicate ) ;
-		return p_block->block_base;
+		return p_block->data_addr;
 	}
 }
 
@@ -487,16 +528,16 @@ void *_qtravel_used_by_addr( void *ptr )
 		if( p == NULL )
 			return NULL;
 		p_block = container_of( p , struct QmallocBlock , block_tree_node_order_by_addr ) ;
-		return p_block->block_base;
+		return p_block->data_addr;
 	}
 	else
 	{
-		p_block = container_of( ptr , struct QmallocBlock , block_base ) ;
+		p_block = container_of( ptr , struct QmallocBlock , data_addr ) ;
 		p = rb_next(&(p_block->block_tree_node_order_by_addr)) ;
 		if( p == NULL )
 			return NULL;
 		p_block = container_of( p , struct QmallocBlock , block_tree_node_order_by_addr ) ;
-		return p_block->block_base;
+		return p_block->data_addr;
 	}
 }
 
@@ -511,46 +552,46 @@ void *_qtravel_unused_by_addr( void *ptr )
 		if( p == NULL )
 			return NULL;
 		p_block = container_of( p , struct QmallocBlock , block_tree_node_order_by_addr ) ;
-		return p_block->block_base;
+		return p_block->data_addr;
 	}
 	else
 	{
-		p_block = container_of( ptr , struct QmallocBlock , block_base ) ;
+		p_block = container_of( ptr , struct QmallocBlock , data_addr ) ;
 		p = rb_next(&(p_block->block_tree_node_order_by_addr)) ;
 		if( p == NULL )
 			return NULL;
 		p_block = container_of( p , struct QmallocBlock , block_tree_node_order_by_addr ) ;
-		return p_block->block_base;
+		return p_block->data_addr;
 	}
 }
 
 size_t _qget_size( void *ptr )
 {
-	struct QmallocBlock	*p_block = container_of( ptr , struct QmallocBlock , block_base ) ;
-	return p_block->block_size;
+	struct QmallocBlock	*p_block = container_of( ptr , struct QmallocBlock , data_addr ) ;
+	return p_block->data_size;
 }
 
 char *_qget_alloc_source_file( void *ptr )
 {
-	struct QmallocBlock	*p_block = container_of( ptr , struct QmallocBlock , block_base ) ;
+	struct QmallocBlock	*p_block = container_of( ptr , struct QmallocBlock , data_addr ) ;
 	return p_block->alloc_source_file;
 }
 
 int _qget_alloc_source_line( void *ptr )
 {
-	struct QmallocBlock	*p_block = container_of( ptr , struct QmallocBlock , block_base ) ;
+	struct QmallocBlock	*p_block = container_of( ptr , struct QmallocBlock , data_addr ) ;
 	return p_block->alloc_source_line;
 }
 
 char *_qget_free_source_file( void *ptr )
 {
-	struct QmallocBlock	*p_block = container_of( ptr , struct QmallocBlock , block_base ) ;
+	struct QmallocBlock	*p_block = container_of( ptr , struct QmallocBlock , data_addr ) ;
 	return p_block->free_source_file;
 }
 
 int _qget_free_source_line( void *ptr )
 {
-	struct QmallocBlock	*p_block = container_of( ptr , struct QmallocBlock , block_base ) ;
+	struct QmallocBlock	*p_block = container_of( ptr , struct QmallocBlock , data_addr ) ;
 	return p_block->free_source_line;
 }
 
@@ -575,9 +616,9 @@ void _qfree_all_unused()
 		UnlinkQmallocBlockFromTreeByBlockSize( & g_unused_root_qmalloc_block , p_block );
 		UnlinkQmallocBlockFromTreeByBlockAddr( & g_unused_root_qmalloc_block , p_block );
 		g_unused_root_qmalloc_block.blocks_count--;
-		g_unused_root_qmalloc_block.blocks_total_size -= p_block->block_size ;
+		g_unused_root_qmalloc_block.blocks_total_size -= sizeof(struct QmallocBlock)+p_block->data_size ;
 #if _DEBUG
-printf( "_qfree_all_unused : on _qfree_all_unused , free[%"PRIu64"]\n" , (uint64_t)(p_block) );
+printf( "_qfree_all_unused : call free[%p]\n" , p_block );
 #endif
 		free( p_block );
 		
