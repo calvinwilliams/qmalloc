@@ -43,6 +43,8 @@
 #define NULL ((void *)0)
 #endif
 
+#define MEMADDR_ALIGN(n)     (((n)+(sizeof(long)-1))&~(sizeof(long)-1))
+
 struct rb_node
 {
 	unsigned long  rb_parent_color;
@@ -50,7 +52,7 @@ struct rb_node
 #define	RB_BLACK	1
 	struct rb_node *rb_right;
 	struct rb_node *rb_left;
-} ;
+} __attribute__((aligned(sizeof(long)))) ;
 
 struct rb_root
 {
