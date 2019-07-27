@@ -11,7 +11,9 @@
 
 struct QmallocBlock
 {
-	unsigned char	dmz ; /* 防止上一内存块写数据越界破坏当前块头信息 */
+	unsigned char	dmz[7] ; /* 防止上一内存块写数据越界破坏当前块头信息 */
+	
+	unsigned char	alloc_page_flag ;
 	
 	void		*block_addr ;
 	struct rb_node	block_tree_node_order_by_addr ;
@@ -19,11 +21,8 @@ struct QmallocBlock
 	size_t		data_size ;
 	struct rb_node	block_tree_node_order_by_size_allowduplicate ;
 	
-	unsigned char	alloc_page_flag ;
 	char		*alloc_source_file ;
 	size_t		alloc_source_line ;
-	char		*free_source_file ;
-	size_t		free_source_line ;
 	
 	char		data_addr[0] ;
 } ;
@@ -97,8 +96,6 @@ else
 			UnlinkQmallocBlockFromTreeByBlockAddr( & g_unused_root_qmalloc_block , p_block );
 			p_block->alloc_source_file = FILE ;
 			p_block->alloc_source_line = LINE ;
-			p_block->free_source_file = NULL ;
-			p_block->free_source_line = 0 ;
 			LinkQmallocBlockToTreeByBlockSizeAllowduplicated( & g_used_root_qmalloc_block , p_block );
 			LinkQmallocBlockToTreeByBlockAddr( & g_used_root_qmalloc_block , p_block );
 #if _DEBUG
@@ -138,8 +135,6 @@ printf( "_qmalloc : entire BLOCKS_PAGE_SIZE[%d]bytes to used\n" , BLOCKS_PAGE_SI
 				p_block->alloc_page_flag = 1 ;
 				p_block->alloc_source_file = FILE ;
 				p_block->alloc_source_line = LINE ;
-				p_block->free_source_file = NULL ;
-				p_block->free_source_line = 0 ;
 				
 				LinkQmallocBlockToTreeByBlockSizeAllowduplicated( & g_used_root_qmalloc_block , p_block );
 				LinkQmallocBlockToTreeByBlockAddr( & g_used_root_qmalloc_block , p_block );
@@ -163,8 +158,7 @@ printf( "_qmalloc : BLOCKS_PAGE_SIZE[%d]bytes divide [%zu][%zu]bytes to used and
 				p_block->alloc_page_flag = 1 ;
 				p_block->alloc_source_file = FILE ;
 				p_block->alloc_source_line = LINE ;
-				p_block->free_source_file = NULL ;
-				p_block->free_source_line = 0 ;
+				
 				LinkQmallocBlockToTreeByBlockSizeAllowduplicated( & g_used_root_qmalloc_block , p_block );
 				LinkQmallocBlockToTreeByBlockAddr( & g_used_root_qmalloc_block , p_block );
 				g_used_root_qmalloc_block.blocks_count++;
@@ -176,8 +170,7 @@ printf( "_qmalloc : BLOCKS_PAGE_SIZE[%d]bytes divide [%zu][%zu]bytes to used and
 				p_block->alloc_page_flag = 0 ;
 				p_next_block->alloc_source_file = NULL ;
 				p_next_block->alloc_source_line = 0 ;
-				p_next_block->free_source_file = NULL ;
-				p_next_block->free_source_line = 0 ;
+				
 				LinkQmallocBlockToTreeByBlockSizeAllowduplicated( & g_unused_root_qmalloc_block , p_next_block );
 				LinkQmallocBlockToTreeByBlockAddr( & g_unused_root_qmalloc_block , p_next_block );
 				g_unused_root_qmalloc_block.blocks_count++;
@@ -202,8 +195,6 @@ printf( "_qmalloc : entire block size[%zu]bytes to used\n" , p_block->data_size 
 				
 				p_block->alloc_source_file = FILE ;
 				p_block->alloc_source_line = LINE ;
-				p_block->free_source_file = NULL ;
-				p_block->free_source_line = 0 ;
 				
 				LinkQmallocBlockToTreeByBlockSizeAllowduplicated( & g_used_root_qmalloc_block , p_block );
 				g_used_root_qmalloc_block.blocks_count++;
@@ -232,8 +223,6 @@ printf( "_qmalloc : block size[%zu]bytes divide [%zu][%zu]bytes to used and [%zu
 				p_block->data_size = size ;
 				p_block->alloc_source_file = FILE ;
 				p_block->alloc_source_line = LINE ;
-				p_block->free_source_file = NULL ;
-				p_block->free_source_line = 0 ;
 				LinkQmallocBlockToTreeByBlockSizeAllowduplicated( & g_used_root_qmalloc_block , p_block );
 				LinkQmallocBlockToTreeByBlockAddr( & g_used_root_qmalloc_block , p_block );
 				g_used_root_qmalloc_block.blocks_count++;
@@ -245,8 +234,6 @@ printf( "_qmalloc : block size[%zu]bytes divide [%zu][%zu]bytes to used and [%zu
 				p_next_block->alloc_page_flag = 0 ;
 				p_next_block->alloc_source_file = NULL ;
 				p_next_block->alloc_source_line = 0 ;
-				p_next_block->free_source_file = NULL ;
-				p_next_block->free_source_line = 0 ;
 				LinkQmallocBlockToTreeByBlockSizeAllowduplicated( & g_unused_root_qmalloc_block , p_next_block );
 				LinkQmallocBlockToTreeByBlockAddr( & g_unused_root_qmalloc_block , p_next_block );
 				g_unused_root_qmalloc_block.blocks_count++;
@@ -275,8 +262,6 @@ printf( "_qmalloc : return[%p]\n" , p_block->data_addr );
 			
 			p_block->alloc_source_file = FILE ;
 			p_block->alloc_source_line = LINE ;
-			p_block->free_source_file = NULL ;
-			p_block->free_source_line = 0 ;
 			
 			LinkQmallocBlockToTreeByBlockSizeAllowduplicated( & g_used_root_qmalloc_block , p_block );
 			LinkQmallocBlockToTreeByBlockAddr( & g_used_root_qmalloc_block , p_block );
@@ -307,8 +292,6 @@ printf( "_qmalloc : call malloc ok , addr[%p] size[%zu][%zu]bytes data[%p]\n" , 
 		p_block->alloc_page_flag = 1 ;
 		p_block->alloc_source_file = FILE ;
 		p_block->alloc_source_line = LINE ;
-		p_block->free_source_file = NULL ;
-		p_block->free_source_line = 0 ;
 		
 		LinkQmallocBlockToTreeByBlockSizeAllowduplicated( & g_used_root_qmalloc_block , p_block );
 		LinkQmallocBlockToTreeByBlockAddr( & g_used_root_qmalloc_block , p_block );
@@ -322,7 +305,7 @@ printf( "_qmalloc : return[%p]\n" , p_block->data_addr );
 	}
 }
 
-void _qfree( void *ptr , char *FILE , int LINE )
+void _qfree( void *ptr )
 {
 	struct QmallocBlock	*p_block ;
 	struct QmallocBlock	*p_prev_block_order_by_addr ;
@@ -341,9 +324,6 @@ printf( "_qfree : ptr[%p]\n" , ptr );
 	UnlinkQmallocBlockFromTreeByBlockAddr( & g_used_root_qmalloc_block , p_block );
 	g_used_root_qmalloc_block.blocks_count--;
 	g_used_root_qmalloc_block.blocks_total_size -= sizeof(struct QmallocBlock)+p_block->data_size ;
-	
-	p_block->free_source_file = FILE ;
-	p_block->free_source_line = LINE ;
 	
 	LinkQmallocBlockToTreeByBlockSizeAllowduplicated( & g_unused_root_qmalloc_block , p_block );
 	LinkQmallocBlockToTreeByBlockAddr( & g_unused_root_qmalloc_block , p_block );
@@ -418,7 +398,7 @@ void *_qrealloc( void *ptr , size_t size , char *FILE , int LINE )
 	if( ptr2 == NULL )
 		return NULL;
 	
-	_qfree( ptr , FILE , LINE );
+	_qfree( ptr );
 	return ptr2;
 }
 
@@ -581,18 +561,6 @@ int _qget_alloc_source_line( void *ptr )
 {
 	struct QmallocBlock	*p_block = container_of( ptr , struct QmallocBlock , data_addr ) ;
 	return p_block->alloc_source_line;
-}
-
-char *_qget_free_source_file( void *ptr )
-{
-	struct QmallocBlock	*p_block = container_of( ptr , struct QmallocBlock , data_addr ) ;
-	return p_block->free_source_file;
-}
-
-int _qget_free_source_line( void *ptr )
-{
-	struct QmallocBlock	*p_block = container_of( ptr , struct QmallocBlock , data_addr ) ;
-	return p_block->free_source_line;
 }
 
 void _qset_cache_blocks_max_size( size_t max_size )

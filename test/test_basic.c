@@ -25,7 +25,7 @@ static void travel_by_size()
 		data = _qtravel_used_by_size(data) ;
 		if( data == NULL )
 			break;
-		printf( "  USED - size[%zu] data[%p] alloc_source_file[%s] alloc_source_line[%d] free_source_file[%s] free_source_line[%d]\n" , _qget_size(data) , data , _qget_alloc_source_file(data) , _qget_alloc_source_line(data) , _qget_free_source_file(data) , _qget_free_source_line(data) );
+		printf( "  USED - size[%zu] data[%p] alloc_source_file[%s] alloc_source_line[%d]\n" , _qget_size(data) , data , _qget_alloc_source_file(data) , _qget_alloc_source_line(data) );
 	}
 	
 	printf( "--- travel_by_size --- unused --- blocks_count[%zu] blocks_total_size[%zu]\n" , _qstat_unused_blocks_count() , _qstat_unused_blocks_total_size() );
@@ -36,7 +36,7 @@ static void travel_by_size()
 		data = _qtravel_unused_by_size(data) ;
 		if( data == NULL )
 			break;
-		printf( "UNUSED - size[%zu] data[%p] alloc_source_file[%s] alloc_source_line[%d] free_source_file[%s] free_source_line[%d]\n" , _qget_size(data) , data , _qget_alloc_source_file(data) , _qget_alloc_source_line(data) , _qget_free_source_file(data) , _qget_free_source_line(data) );
+		printf( "UNUSED - size[%zu] data[%p] alloc_source_file[%s] alloc_source_line[%d]\n" , _qget_size(data) , data , _qget_alloc_source_file(data) , _qget_alloc_source_line(data) );
 	}
 	
 	return;
@@ -54,7 +54,7 @@ static void travel_by_addr()
 		data = _qtravel_used_by_addr(data) ;
 		if( data == NULL )
 			break;
-		printf( "  USED - size[%zu] data[%p] alloc_source_file[%s] alloc_source_line[%d] free_source_file[%s] free_source_line[%d]\n" , _qget_size(data) , data , _qget_alloc_source_file(data) , _qget_alloc_source_line(data) , _qget_free_source_file(data) , _qget_free_source_line(data) );
+		printf( "  USED - size[%zu] data[%p] alloc_source_file[%s] alloc_source_line[%d]\n" , _qget_size(data) , data , _qget_alloc_source_file(data) , _qget_alloc_source_line(data) );
 	}
 	
 	printf( "--- travel_by_addr --- unused --- blocks_count[%zu] blocks_total_size[%zu]\n" , _qstat_unused_blocks_count() , _qstat_unused_blocks_total_size() );
@@ -65,7 +65,7 @@ static void travel_by_addr()
 		data = _qtravel_unused_by_addr(data) ;
 		if( data == NULL )
 			break;
-		printf( "UNUSED - size[%zu] data[%p] alloc_source_file[%s] alloc_source_line[%d] free_source_file[%s] free_source_line[%d]\n" , _qget_size(data) , data , _qget_alloc_source_file(data) , _qget_alloc_source_line(data) , _qget_free_source_file(data) , _qget_free_source_line(data) );
+		printf( "UNUSED - size[%zu] data[%p] alloc_source_file[%s] alloc_source_line[%d]\n" , _qget_size(data) , data , _qget_alloc_source_file(data) , _qget_alloc_source_line(data) );
 	}
 	
 	return;
