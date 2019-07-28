@@ -23,25 +23,25 @@ void *_qrealloc( void *ptr , size_t size , char *FILE , int LINE );
 void *_qstrdup( const char *s , char *FILE , int LINE );
 void *_qstrndup( const char *s , size_t n , char *FILE , int LINE );
 
-size_t _qstat_used_blocks_count();
-size_t _qstat_used_blocks_total_size();
-size_t _qstat_unused_blocks_count();
-size_t _qstat_unused_blocks_total_size();
-void *_qtravel_used_by_size( void *ptr );
-void *_qtravel_unused_by_size( void *ptr );
-void *_qtravel_used_by_addr( void *ptr );
-void *_qtravel_unused_by_addr( void *ptr );
-size_t _qget_size( void *ptr );
-char *_qget_alloc_source_file( void *ptr );
-int _qget_alloc_source_line( void *ptr );
+size_t qstat_used_blocks_count();
+size_t qstat_used_blocks_total_size();
+size_t qstat_unused_blocks_count();
+size_t qstat_unused_blocks_total_size();
+void *qtravel_used_by_size( void *ptr );
+void *qtravel_unused_by_size( void *ptr );
+void *qtravel_used_by_addr( void *ptr );
+void *qtravel_unused_by_addr( void *ptr );
+size_t qget_size( void *ptr );
+char *qget_alloc_source_file( void *ptr );
+int qget_alloc_source_line( void *ptr );
 
-void _qset_cache_blocks_max_size( size_t max_size );
-void _qfree_all_unused();
+void qset_cache_blocks_max_size( size_t max_size );
+void qfree_all_unused();
 
-size_t _qget_block_header_size();
-size_t _qget_normal_block_max_size();
-size_t _qget_blocks_page_size();
-size_t _qget_cache_blocks_max_size();
+size_t qget_block_header_size();
+size_t qget_normal_block_max_size();
+size_t qget_blocks_page_size();
+size_t qget_cache_blocks_max_size();
 
 #ifdef __cplusplus
 extern }
