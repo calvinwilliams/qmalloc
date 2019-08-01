@@ -20,6 +20,14 @@
  * using the generic single-entry routines.
  */
 
+#ifndef container_of
+#define container_of(ptr, type, member) ((type *)( (char *)(ptr) - offsetof(type,member) ))
+#endif
+
+#ifndef offsetof
+#define offsetof(TYPE, MEMBER) ((size_t) &((TYPE *)0)->MEMBER)
+#endif
+
 struct list_head {
 	struct list_head *next, *prev;
 };
@@ -105,6 +113,9 @@ void list_splice_tail_init(struct list_head *list, struct list_head *head);
  */
 #define list_next_entry(p_node, type, member) \
 	list_entry((p_node)->member.next, type, member)
+
+#define list_next(p_node, member) \
+		((p_node)->member.next)
 
 /**
  * list_prev_entry - get the prev element in list

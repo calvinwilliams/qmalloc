@@ -27,21 +27,18 @@ size_t qstat_used_blocks_count();
 size_t qstat_used_blocks_total_size();
 size_t qstat_unused_blocks_count();
 size_t qstat_unused_blocks_total_size();
-void *qtravel_used_by_size( void *ptr );
-void *qtravel_unused_by_size( void *ptr );
-void *qtravel_used_by_addr( void *ptr );
-void *qtravel_unused_by_addr( void *ptr );
+
+void *qtravel_used_blocks( void *ptr );
+void *qtravel_unused_blocks( void *ptr );
 size_t qget_size( void *ptr );
 char *qget_alloc_source_file( void *ptr );
 int qget_alloc_source_line( void *ptr );
 
-void qset_cache_blocks_max_size( size_t max_size );
 void qfree_all_unused();
 
 size_t qget_block_header_size();
-size_t qget_normal_block_max_size();
-size_t qget_blocks_page_size();
-size_t qget_cache_blocks_max_size();
+size_t qget_thread_mempool_block_size();
+size_t qget_process_mempool_block_size();
 
 #ifdef __cplusplus
 extern }

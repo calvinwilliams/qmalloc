@@ -13,59 +13,30 @@
 		i++; \
 	} \
 
-static void travel_by_size()
+static void travel_blocks()
 {
 	char		*data = NULL ;
 	
-	printf( "--- travel_by_size --- used ---- blocks_count[%zu] blocks_total_size[%zu]\n" , _qstat_used_blocks_count() , _qstat_used_blocks_total_size() );
+	printf( "--- travel_by --- used ---- blocks_count[%zu] blocks_total_size[%zu]\n" , qstat_used_blocks_count() , qstat_used_blocks_total_size() );
 	
 	data = NULL ;
 	while(1)
 	{
-		data = _qtravel_used_by_size(data) ;
+		data = qtravel_used_blocks(data) ;
 		if( data == NULL )
 			break;
-		printf( "  USED - size[%zu] data[%p] alloc_source_file[%s] alloc_source_line[%d]\n" , _qget_size(data) , data , _qget_alloc_source_file(data) , _qget_alloc_source_line(data) );
+		printf( "  USED - size[%zu] data[%p] alloc_source_file[%s] alloc_source_line[%d]\n" , qget_size(data) , data , qget_alloc_source_file(data) , qget_alloc_source_line(data) );
 	}
 	
-	printf( "--- travel_by_size --- unused --- blocks_count[%zu] blocks_total_size[%zu]\n" , _qstat_unused_blocks_count() , _qstat_unused_blocks_total_size() );
+	printf( "--- travel --- unused --- blocks_count[%zu] blocks_total_size[%zu]\n" , qstat_unused_blocks_count() , qstat_unused_blocks_total_size() );
 	
 	data = NULL ;
 	while(1)
 	{
-		data = _qtravel_unused_by_size(data) ;
+		data = qtravel_unused_blocks(data) ;
 		if( data == NULL )
 			break;
-		printf( "UNUSED - size[%zu] data[%p] alloc_source_file[%s] alloc_source_line[%d]\n" , _qget_size(data) , data , _qget_alloc_source_file(data) , _qget_alloc_source_line(data) );
-	}
-	
-	return;
-}
-
-static void travel_by_addr()
-{
-	char		*data = NULL ;
-	
-	printf( "--- travel_by_addr --- used --- blocks_count[%zu] blocks_total_size[%zu]\n" , _qstat_used_blocks_count() , _qstat_used_blocks_total_size() );
-	
-	data = NULL ;
-	while(1)
-	{
-		data = _qtravel_used_by_addr(data) ;
-		if( data == NULL )
-			break;
-		printf( "  USED - size[%zu] data[%p] alloc_source_file[%s] alloc_source_line[%d]\n" , _qget_size(data) , data , _qget_alloc_source_file(data) , _qget_alloc_source_line(data) );
-	}
-	
-	printf( "--- travel_by_addr --- unused --- blocks_count[%zu] blocks_total_size[%zu]\n" , _qstat_unused_blocks_count() , _qstat_unused_blocks_total_size() );
-	
-	data = NULL ;
-	while(1)
-	{
-		data = _qtravel_unused_by_addr(data) ;
-		if( data == NULL )
-			break;
-		printf( "UNUSED - size[%zu] data[%p] alloc_source_file[%s] alloc_source_line[%d]\n" , _qget_size(data) , data , _qget_alloc_source_file(data) , _qget_alloc_source_line(data) );
+		printf( "UNUSED - size[%zu] data[%p] alloc_source_file[%s] alloc_source_line[%d]\n" , qget_size(data) , data , qget_alloc_source_file(data) , qget_alloc_source_line(data) );
 	}
 	
 	return;
@@ -85,64 +56,73 @@ int test( int round )
 	data[i] = qmalloc( size ) ;
 	IF_P_EQ_NULL_EXIT
 	
-	travel_by_size();
-	travel_by_addr();
+	travel_blocks();
 	
 	size = 2 ;
 	data[i] = qmalloc( size ) ;
 	IF_P_EQ_NULL_EXIT
 	
-	travel_by_size();
-	travel_by_addr();
+	travel_blocks();
 	
 	size = 4 ;
 	data[i] = qmalloc( size ) ;
 	IF_P_EQ_NULL_EXIT
 	
-	travel_by_size();
-	travel_by_addr();
+	travel_blocks();
 	
 	size = 8 ;
 	data[i] = qmalloc( size ) ;
 	IF_P_EQ_NULL_EXIT
 	
-	travel_by_size();
-	travel_by_addr();
+	travel_blocks();
 	
 	size = 64 ;
 	data[i] = qmalloc( size ) ;
 	IF_P_EQ_NULL_EXIT
 	
-	travel_by_size();
-	travel_by_addr();
+	travel_blocks();
 	
 	size = 256 ;
 	data[i] = qmalloc( size ) ;
 	IF_P_EQ_NULL_EXIT
 	
-	travel_by_size();
-	travel_by_addr();
+	travel_blocks();
 	
-	size = _qget_normal_block_max_size()-1 ;
+	size = qget_thread_mempool_block_size()-1 ;
 	data[i] = qmalloc( size ) ;
 	IF_P_EQ_NULL_EXIT
 	
-	travel_by_size();
-	travel_by_addr();
+	travel_blocks();
 	
-	size = _qget_normal_block_max_size() ;
+	size = qget_thread_mempool_block_size() ;
 	data[i] = qmalloc( size ) ;
 	IF_P_EQ_NULL_EXIT
 	
-	travel_by_size();
-	travel_by_addr();
+	travel_blocks();
 	
-	size = _qget_normal_block_max_size()+1 ;
+	size = qget_thread_mempool_block_size()+1 ;
 	data[i] = qmalloc( size ) ;
 	IF_P_EQ_NULL_EXIT
 	
-	travel_by_size();
-	travel_by_addr();
+	travel_blocks();
+	
+	size = qget_process_mempool_block_size()-1 ;
+	data[i] = qmalloc( size ) ;
+	IF_P_EQ_NULL_EXIT
+	
+	travel_blocks();
+	
+	size = qget_process_mempool_block_size() ;
+	data[i] = qmalloc( size ) ;
+	IF_P_EQ_NULL_EXIT
+	
+	travel_blocks();
+	
+	size = qget_process_mempool_block_size()+1 ;
+	data[i] = qmalloc( size ) ;
+	IF_P_EQ_NULL_EXIT
+	
+	travel_blocks();
 	
 	count = i ;
 	for( i = 0 ; i < count ; i++ )
@@ -151,8 +131,7 @@ int test( int round )
 		qfree( data[i] ) ;
 		printf( "test_basic : qfree[%p] ok\n" , data[i] );
 		
-		travel_by_size();
-		travel_by_addr();
+		travel_blocks();
 	}
 	
 	return 0;
@@ -160,23 +139,19 @@ int test( int round )
 
 int main()
 {
-	_qset_cache_blocks_max_size( _qget_normal_block_max_size() * 3 );
-	
-	printf( "    get_block_header_size[%zu]\n" , _qget_block_header_size() );
-	printf( "get_normal_block_max_size[%zu]\n" , _qget_normal_block_max_size() );
-	printf( "     get_blocks_page_size[%zu]\n" , _qget_blocks_page_size() );
-	printf( "get_cache_blocks_max_size[%zu]\n" , _qget_cache_blocks_max_size() );
+	printf( "         qget_block_header_size[%zu]\n" , qget_block_header_size() );
+	printf( " qget_thread_mempool_block_size[%zu]\n" , qget_thread_mempool_block_size() );
+	printf( "qget_process_mempool_block_size[%zu]\n" , qget_process_mempool_block_size() );
 	
 	test(1);
 	
 	test(2);
 	
-	printf( "test_basic : _qfree_all_unused ...\n" );
-	_qfree_all_unused();
-	printf( "test_basic : _qfree_all_unused ok\n" );
+	printf( "test_basic : qfree_all_unused ...\n" );
+	qfree_all_unused();
+	printf( "test_basic : qfree_all_unused ok\n" );
 	
-	travel_by_size();
-	travel_by_addr();
+	travel_blocks();
 	
 	return 0;
 }
