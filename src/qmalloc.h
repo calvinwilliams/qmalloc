@@ -17,7 +17,7 @@ extern "C" {
 #define qstrdup(_str_)			_qstrdup(_str_,__FILE__,__LINE__)
 #define qstrndup(_str_,_n_)		_qstrndup(_str_,_n_,__FILE__,__LINE__)
 
-void *_qmalloc( size_t size , char *FILE , int LINE );
+void *_qmalloc( size_t size , char *FILE , size_t LINE );
 void _qfree( void *ptr );
 void *_qrealloc( void *ptr , size_t size , char *FILE , int LINE );
 void *_qstrdup( const char *s , char *FILE , int LINE );

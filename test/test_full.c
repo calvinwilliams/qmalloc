@@ -1,5 +1,7 @@
 #include "qmalloc.h"
-#include "inttypes.h"
+#include "util.h"
+
+#include <inttypes.h>
 
 #define IF_P_EQ_NULL_EXIT \
 	if( data[i] == NULL ) \
@@ -12,35 +14,6 @@
 		printf( "test_basic : qmalloc[%d] ok , data[%p]\n" , size , data[i] ); \
 		i++; \
 	} \
-
-static void travel_blocks()
-{
-	char		*data = NULL ;
-	
-	printf( "--- travel_by --- used ---- blocks_count[%zu] blocks_total_size[%zu]\n" , qstat_used_blocks_count() , qstat_used_blocks_total_size() );
-	
-	data = NULL ;
-	while(1)
-	{
-		data = qtravel_used_blocks(data) ;
-		if( data == NULL )
-			break;
-		printf( "  USED - size[%zu] data[%p] alloc_source_file[%s] alloc_source_line[%d]\n" , qget_size(data) , data , qget_alloc_source_file(data) , qget_alloc_source_line(data) );
-	}
-	
-	printf( "--- travel --- unused --- blocks_count[%zu] blocks_total_size[%zu]\n" , qstat_unused_blocks_count() , qstat_unused_blocks_total_size() );
-	
-	data = NULL ;
-	while(1)
-	{
-		data = qtravel_unused_blocks(data) ;
-		if( data == NULL )
-			break;
-		printf( "UNUSED - size[%zu] data[%p] alloc_source_file[%s] alloc_source_line[%d]\n" , qget_size(data) , data , qget_alloc_source_file(data) , qget_alloc_source_line(data) );
-	}
-	
-	return;
-}
 
 int test( int round )
 {
@@ -139,9 +112,7 @@ int test( int round )
 
 int main()
 {
-	printf( "         qget_block_header_size[%zu]\n" , qget_block_header_size() );
-	printf( " qget_thread_mempool_block_size[%zu]\n" , qget_thread_mempool_block_size() );
-	printf( "qget_process_mempool_block_size[%zu]\n" , qget_process_mempool_block_size() );
+	show_parameters();
 	
 	test(1);
 	

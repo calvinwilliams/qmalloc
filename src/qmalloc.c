@@ -1,45 +1,16 @@
 #include "qmalloc_in.h"
 
-__thread struct QmallocBlockClass	*g_thread_mempool_blocks_class_array = NULL ;
-__thread size_t				g_thread_mempool_blocks_count = 0 ;
-__thread size_t				g_thread_mempool_blocks_total_size = 0 ;
+#define _DEBUG				1
 
-struct QmallocBlockClass		*g_process_mempool_blocks_class_array = NULL ;
-size_t					g_process_mempool_blocks_count = 0 ;
-size_t					g_process_mempool_blocks_total_size = 0 ;
+static __thread struct QmallocBlockClass	*g_thread_mempool_blocks_class_array = NULL ;
+static __thread size_t				g_thread_mempool_blocks_count = 0 ;
+static __thread size_t				g_thread_mempool_blocks_total_size = 0 ;
+
+static struct QmallocBlockClass			*g_process_mempool_blocks_class_array = NULL ;
+static size_t					g_process_mempool_blocks_count = 0 ;
+static size_t					g_process_mempool_blocks_total_size = 0 ;
 
 int	g_spanlock_status = SPINLOCK_UNLOCK ;
-
-static inline int _qceil_size( size_t size , size_t *p_block_class_index , size_t *p_ceil_size )
-{
-	register size_t		block_class_index ;
-	register size_t		ceil_size ;
-	
-	if( size == 0 )
-	{
-		(*p_block_class_index) = 0 ;
-		(*p_ceil_size) = 0 ;
-		return 0;
-	}
-	else if( size > MAX_PROCESS_MEMPOOL_BLOCK_SIZE )
-	{
-		return -1;
-	}
-	
-	for( block_class_index=0 , ceil_size=1 ; ceil_size <= MAX_PROCESS_MEMPOOL_BLOCK_SIZE ; block_class_index++ )
-	{
-		if( size <= ceil_size )
-		{
-			(*p_block_class_index) = block_class_index ;
-			(*p_ceil_size) = ceil_size ;
-			return 0;
-		}
-		
-		ceil_size <<= 1 ;
-	}
-	
-	return -2;
-}
 
 static inline int _qinit()
 {
@@ -49,9 +20,16 @@ static inline int _qinit()
 	
 	if( g_thread_mempool_blocks_class_array == NULL )
 	{
+#if _DEBUG
+		printf( "_qinit : g_thread_mempool_blocks_class_array is NULL\n" );
+#endif
+		
 		g_thread_mempool_blocks_class_array = (struct QmallocBlockClass *)malloc( sizeof(struct QmallocBlockClass) * (MAX_THREAD_MEMPOOL_BLOCK_SIZE_CLASS+1) ) ;
 		if( g_thread_mempool_blocks_class_array == NULL )
 		{
+#if _DEBUG
+			printf( "_qinit : malloc failed , errno[%d]\n" , errno );
+#endif
 			return -1;
 		}
 		
@@ -62,29 +40,46 @@ static inline int _qinit()
 			p_block_class->block_size = block_size ;
 			INIT_LIST_HEAD( & (p_block_class->used_block_list) );
 			INIT_LIST_HEAD( & (p_block_class->unused_block_list) );
+#if _DEBUG
+			printf( "_qinit : create block_class_index[%zu] p_block_class[%p] block_size[%zu] in thread mempool\n" , block_class_index , p_block_class , block_size );
+#endif
 		}
 	}
 	
 	if( g_process_mempool_blocks_class_array == NULL )
 	{
+#if _DEBUG
+		printf( "_qinit : g_process_mempool_blocks_class_array is NULL\n" );
+#endif
+		
 		LOCK_SPINLOCK
 		
 		if( g_process_mempool_blocks_class_array == NULL )
 		{
+#if _DEBUG
+			printf( "_qinit : g_process_mempool_blocks_class_array is NULL too\n" );
+#endif
+		
 			g_process_mempool_blocks_class_array = (struct QmallocBlockClass *)malloc( sizeof(struct QmallocBlockClass) * (DIFF_PROCESS_MEMPOOL_BLOCK_SIZE_CLASS+1) ) ;
 			if( g_process_mempool_blocks_class_array == NULL )
 			{
+#if _DEBUG
+				printf( "_qinit : malloc failed , errno[%d]\n" , errno );
+#endif
 				UNLOCK_SPINLOCK
 				return -2;
 			}
 			
 			for( block_class_index=0 , block_size=1<<(MAX_THREAD_MEMPOOL_BLOCK_SIZE_CLASS+1) ; block_class_index<=DIFF_PROCESS_MEMPOOL_BLOCK_SIZE_CLASS ; block_class_index++ , block_size<<=1 )
 			{
-				p_block_class = g_thread_mempool_blocks_class_array + block_class_index ;
+				p_block_class = g_process_mempool_blocks_class_array + block_class_index ;
 				
 				p_block_class->block_size = block_size ;
 				INIT_LIST_HEAD( & (p_block_class->used_block_list) );
 				INIT_LIST_HEAD( & (p_block_class->unused_block_list) );
+#if _DEBUG
+				printf( "_qinit : create block_class_index[%zu] p_block_class[%p] block_size[%zu] in process mempool\n" , block_class_index , p_block_class , block_size );
+#endif
 			}
 		}
 		
@@ -94,37 +89,103 @@ static inline int _qinit()
 	return 0;
 }
 
-void *_qmalloc( size_t size , char *FILE , int LINE )
+static inline int _qceil_size( size_t size , size_t *p_block_class_index , size_t *p_ceil_size )
+{
+	register size_t		block_class_index ;
+	register size_t		ceil_size ;
+	
+	if( size == 0 )
+	{
+		(*p_block_class_index) = 0 ;
+		(*p_ceil_size) = 0 ;
+#if _DEBUG
+		printf( "_qceil_size : size[%zu] return block_class_index[%zu] ceil_size[%zu]\n" , size , (*p_block_class_index) , (*p_ceil_size) );
+#endif
+		return 0;
+	}
+	else if( size > MAX_PROCESS_MEMPOOL_BLOCK_SIZE )
+	{
+#if _DEBUG
+		printf( "_qceil_size : size[%zu] return[HUGE_BLOCK]\n" , size );
+#endif
+		return HUGE_BLOCK;
+	}
+	
+	for( block_class_index=0 , ceil_size=1 ; ceil_size <= MAX_PROCESS_MEMPOOL_BLOCK_SIZE ; block_class_index++ )
+	{
+		if( size <= ceil_size )
+		{
+			(*p_block_class_index) = block_class_index ;
+			(*p_ceil_size) = ceil_size ;
+#if _DEBUG
+		printf( "_qceil_size : size[%zu] return block_class_index[%zu] ceil_size[%zu]\n" , size , (*p_block_class_index) , (*p_ceil_size) );
+#endif
+			return 0;
+		}
+		
+		ceil_size <<= 1 ;
+	}
+	
+#if _DEBUG
+	printf( "_qceil_size : size[%zu] return[INTERNAL_ERROR]\n" , size );
+#endif
+	return INTERNAL_ERROR;
+}
+
+void *_qmalloc( size_t size , char *FILE , size_t LINE )
 {
 	size_t		block_class_index ;
 	size_t		ceil_size ;
 	
 	int		nret = 0 ;
 	
+#if _DEBUG
+	printf( "_qmalloc : size[%zu] FILE[%s] LINE[%zu]\n" , size , FILE , LINE );
+#endif
+	
 	nret = _qinit() ;
 	if( nret )
+	{
+#if _DEBUG
+		printf( "_qmalloc : return NULL\n" );
+#endif
 		return NULL;
+	}
 	
 	nret = _qceil_size( size , & block_class_index , & ceil_size ) ;
-	if( nret == -1 )
+	if( nret == HUGE_BLOCK )
 	{
 		struct QmallocBlockHeader	*p_block_header ;
 		
-		p_block_header = (struct QmallocBlockHeader *)malloc( sizeof(struct QmallocBlockHeader) + size ) ;
+		p_block_header = (struct QmallocBlockHeader *)malloc( sizeof(struct QmallocBlockHeader)+size ) ;
 		if( p_block_header == NULL )
 		{
+#if _DEBUG
+			printf( "_qmalloc : malloc [%zu]bytes failed , errno[%d]\n" , sizeof(struct QmallocBlockHeader)+size , errno );
+#endif
 			return NULL;
 		}
+#if _DEBUG
+		printf( "_qmalloc : malloc [%zu]bytes ok\n" , sizeof(struct QmallocBlockHeader)+size );
+#endif
 		
 		p_block_header->dmz = 0 ;
 		p_block_header->p_block_class = NULL ;
 		p_block_header->alloc_source_file = FILE ;
 		p_block_header->alloc_source_line = LINE ;
 		
+#if _DEBUG
+		printf( "_qmalloc : return p_block_header[%p] data_base[%p]\n" , p_block_header , p_block_header->data_base );
+#endif
 		return p_block_header->data_base;
 	}
-	else if( nret == -2 )
+	else if( nret == INTERNAL_ERROR )
+	{
+#if _DEBUG
+		printf( "_qmalloc : return NULL\n" );
+#endif
 		return NULL;
+	}
 	
 	if( block_class_index <= MAX_THREAD_MEMPOOL_BLOCK_SIZE_CLASS )
 	{
@@ -133,23 +194,39 @@ void *_qmalloc( size_t size , char *FILE , int LINE )
 		
 		p_block_class = g_thread_mempool_blocks_class_array + block_class_index ;
 		
+#if _DEBUG
+		printf( "_qmalloc : query block in thread mempool , block_class_index[%zu] ceil_size[%zu] , p_block_class[%p]\n" , block_class_index , ceil_size , p_block_class );
+#endif
+		
 		if( ! list_empty( & (p_block_class->unused_block_list) ) )
 		{
 			p_block_header = list_first_entry( & (p_block_class->unused_block_list) , struct QmallocBlockHeader , block_list_node ) ;
+#if _DEBUG
+			printf( "_qmalloc : move unused block to used , p_block_header[%p] data_base[%p]\n" , p_block_header , p_block_header->data_base );
+#endif
 			list_del( & (p_block_header->block_list_node) );
 			list_add_tail( & (p_block_header->block_list_node) , & (p_block_class->used_block_list) );
 			
 			p_block_header->alloc_source_file = FILE ;
 			p_block_header->alloc_source_line = LINE ;
 			
+#if _DEBUG
+			printf( "_qmalloc : return p_block_header[%p] data_base[%p]\n" , p_block_header , p_block_header->data_base );
+#endif
 			return p_block_header->data_base;
 		}
 		
 		p_block_header = (struct QmallocBlockHeader *)malloc( sizeof(struct QmallocBlockHeader) + ceil_size ) ;
 		if( p_block_header == NULL )
 		{
+#if _DEBUG
+			printf( "_qmalloc : return NULL\n" );
+#endif
 			return NULL;
 		}
+#if _DEBUG
+		printf( "_qmalloc : malloc ok , p_block_header[%p] p_block_header->data_base[%p]\n" , p_block_header , p_block_header->data_base );
+#endif
 		
 		p_block_header->dmz = 0 ;
 		p_block_header->p_block_class = p_block_class ;
@@ -157,6 +234,9 @@ void *_qmalloc( size_t size , char *FILE , int LINE )
 		p_block_header->alloc_source_line = LINE ;
 		list_add_tail( & (p_block_header->block_list_node) , & (p_block_class->used_block_list) );
 		
+#if _DEBUG
+		printf( "_qmalloc : return p_block_header[%p] data_base[%p]\n" , p_block_header , p_block_header->data_base );
+#endif
 		return p_block_header->data_base;
 	}
 	else if( block_class_index <= MAX_PROCESS_MEMPOOL_BLOCK_SIZE_CLASS )
@@ -168,9 +248,16 @@ void *_qmalloc( size_t size , char *FILE , int LINE )
 		
 		p_block_class = g_process_mempool_blocks_class_array + (block_class_index-MAX_THREAD_MEMPOOL_BLOCK_SIZE_CLASS) ;
 		
+#if _DEBUG
+		printf( "_qmalloc : query block in process mempool , block_class_index[%zu] ceil_size[%zu] , p_block_class[%p]\n" , block_class_index , ceil_size , p_block_class );
+#endif
+		
 		if( ! list_empty( & (p_block_class->unused_block_list) ) )
 		{
 			p_block_header = list_first_entry( & (p_block_class->unused_block_list) , struct QmallocBlockHeader , block_list_node ) ;
+#if _DEBUG
+			printf( "_qmalloc : move unused block to used , p_block_header[%p] data_base[%p]\n" , p_block_header , p_block_header->data_base );
+#endif
 			list_del( & (p_block_header->block_list_node) );
 			list_add_tail( & (p_block_header->block_list_node) , & (p_block_class->used_block_list) );
 			
@@ -179,6 +266,9 @@ void *_qmalloc( size_t size , char *FILE , int LINE )
 			
 			UNLOCK_SPINLOCK
 			
+#if _DEBUG
+			printf( "_qmalloc : return p_block_header[%p] data_base[%p]\n" , p_block_header , p_block_header->data_base );
+#endif
 			return p_block_header->data_base;
 		}
 		
@@ -186,8 +276,14 @@ void *_qmalloc( size_t size , char *FILE , int LINE )
 		if( p_block_header == NULL )
 		{
 			UNLOCK_SPINLOCK
+#if _DEBUG
+			printf( "_qmalloc : return NULL\n" );
+#endif
 			return NULL;
 		}
+#if _DEBUG
+		printf( "_qmalloc : malloc ok , p_block_header[%p] p_block_header->data_base[%p]\n" , p_block_header , p_block_header->data_base );
+#endif
 		
 		p_block_header->dmz = 0 ;
 		p_block_header->p_block_class = p_block_class ;
@@ -197,10 +293,16 @@ void *_qmalloc( size_t size , char *FILE , int LINE )
 		
 		UNLOCK_SPINLOCK
 		
+#if _DEBUG
+		printf( "_qmalloc : return p_block_header[%p] data_base[%p]\n" , p_block_header , p_block_header->data_base );
+#endif
 		return p_block_header->data_base;
 	}
 	else
 	{
+#if _DEBUG
+		printf( "_qmalloc : return NULL\n" );
+#endif
 		return NULL;
 	}
 }
@@ -209,6 +311,10 @@ void _qfree( void *ptr )
 {
 	struct QmallocBlockHeader	*p_block_header ;
 	struct QmallocBlockClass	*p_block_class ;
+	
+#if _DEBUG
+	printf( "_qfree : ptr[%p]\n" , ptr );
+#endif
 	
 	p_block_header = (struct QmallocBlockHeader *)((char*)ptr-sizeof(struct QmallocBlockHeader)) ;
 	if( p_block_header->p_block_class == NULL )
@@ -219,8 +325,15 @@ void _qfree( void *ptr )
 	
 	p_block_class = p_block_header->p_block_class ;
 	
+#if _DEBUG
+	printf( "_qfree : p_block_header[%p] alloc_source_file[%s] alloc_source_line[%zu] data_base[%p] , p_block_class[%p] block_size[%zu]\n" , p_block_header , p_block_header->alloc_source_file , p_block_header->alloc_source_line , p_block_header->data_base , p_block_class , p_block_class->block_size );
+#endif
+	
 	p_block_header->alloc_source_file = NULL ;
 	p_block_header->alloc_source_line = 0 ;
+#if _DEBUG
+	printf( "_qfree : move used block to unused , p_block_header[%p] data_base[%p]\n" , p_block_header , p_block_header->data_base );
+#endif
 	list_del( & (p_block_header->block_list_node) );
 	list_add_tail( & (p_block_header->block_list_node) , & (p_block_class->unused_block_list) );
 	
@@ -289,7 +402,7 @@ size_t qstat_unused_blocks_total_size()
 	return g_process_mempool_blocks_total_size;
 }
 
-#define member_of(_base_,_type_,_offset_of_struct_)	(_type_*)((_base_)+(_offset_of_struct_))
+#define member_of(_base_,_type_,_offset_of_struct_)	(_type_*)((char*)(_base_)+(_offset_of_struct_))
 
 static void *_qtravel_block( void *ptr , size_t block_list_offset_of_struct )
 {
@@ -299,6 +412,14 @@ static void *_qtravel_block( void *ptr , size_t block_list_offset_of_struct )
 	struct list_head		*p_next_node ;
 	struct QmallocBlockHeader	*p_next_block_header ;
 	
+	int				nret = 0 ;
+	
+	nret = _qinit() ;
+	if( nret )
+	{
+		return NULL;
+	}
+	
 	if( ptr == NULL )
 	{
 		for( block_class_index=0 ; block_class_index<=MAX_THREAD_MEMPOOL_BLOCK_SIZE_CLASS ; block_class_index++ )
@@ -307,7 +428,7 @@ static void *_qtravel_block( void *ptr , size_t block_list_offset_of_struct )
 			
 			if( ! list_empty( member_of(p_block_class,struct list_head,block_list_offset_of_struct) ) )
 			{
-				p_block_header = list_first_entry( & (p_block_class->unused_block_list) , struct QmallocBlockHeader , block_list_node ) ;
+				p_block_header = list_first_entry( member_of(p_block_class,struct list_head,block_list_offset_of_struct) , struct QmallocBlockHeader , block_list_node ) ;
 				return p_block_header->data_base;
 			}
 		}
@@ -339,7 +460,7 @@ static void *_qtravel_block( void *ptr , size_t block_list_offset_of_struct )
 			p_next_node = list_next( p_block_header , block_list_node ) ;
 			if( p_next_node != member_of(p_block_class,struct list_head,block_list_offset_of_struct) )
 			{
-				p_next_block_header =  list_entry( p_next_node , struct QmallocBlockHeader , block_list_node ) ;
+				p_next_block_header = list_entry( p_next_node , struct QmallocBlockHeader , block_list_node ) ;
 				return p_next_block_header->data_base;
 			}
 			
@@ -444,7 +565,12 @@ void qfree_all_unused()
 	
 	nret = _qinit() ;
 	if( nret )
+	{
+#if _DEBUG
+		printf( "qfree_all_unused\n" );
+#endif
 		return;
+	}
 	
 	for( block_class_index=0 ; block_class_index<=MAX_THREAD_MEMPOOL_BLOCK_SIZE_CLASS ; block_class_index++ )
 	{
@@ -452,6 +578,9 @@ void qfree_all_unused()
 		
 		list_for_each_entry_safe( p_block_header , p_next_block_header , & (p_block_class->unused_block_list) , struct QmallocBlockHeader , block_list_node )
 		{
+#if _DEBUG
+			printf( "qfree_all_unused : unlink and free p_block_header[%p]\n" , p_block_header );
+#endif
 			list_del( & (p_block_header->block_list_node) );
 			
 			free( p_block_header );
@@ -466,6 +595,9 @@ void qfree_all_unused()
 		
 		list_for_each_entry_safe( p_block_header , p_next_block_header , & (p_block_class->unused_block_list) , struct QmallocBlockHeader , block_list_node )
 		{
+#if _DEBUG
+			printf( "qfree_all_unused : unlink and free p_block_header[%p]\n" , p_block_header );
+#endif
 			list_del( & (p_block_header->block_list_node) );
 			
 			free( p_block_header );
@@ -474,6 +606,9 @@ void qfree_all_unused()
 	
 	UNLOCK_SPINLOCK
 	
+#if _DEBUG
+	printf( "qfree_all_unused : return\n" );
+#endif
 	return;
 }
 

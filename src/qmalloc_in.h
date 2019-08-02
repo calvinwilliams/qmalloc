@@ -85,6 +85,9 @@ struct QmallocBlockClass
 #define LOCK_SPINLOCK		while( __sync_val_compare_and_swap( & g_spanlock_status , SPINLOCK_UNLOCK , SPINLOCK_LOCK ) == SPINLOCK_LOCK ) ;
 #define UNLOCK_SPINLOCK		g_spanlock_status = SPINLOCK_UNLOCK ;
 
+#define INTERNAL_ERROR		-1
+#define HUGE_BLOCK		900
+
 #ifdef __cplusplus
 extern }
 #endif
