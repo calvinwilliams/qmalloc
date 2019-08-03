@@ -30,9 +30,10 @@ size_t qstat_unused_blocks_total_size();
 
 void *qtravel_used_blocks( void *ptr );
 void *qtravel_unused_blocks( void *ptr );
-size_t qget_size( void *ptr );
 char *qget_alloc_source_file( void *ptr );
 int qget_alloc_source_line( void *ptr );
+size_t qget_alloc_size( void *ptr );
+size_t qget_block_size( void *ptr );
 
 void qfree_all_unused();
 

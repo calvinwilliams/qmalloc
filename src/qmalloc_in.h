@@ -65,6 +65,7 @@ struct QmallocBlockHeader
 	
 	char				*alloc_source_file ; /* 申请内存时的源代码文件名 */
 	size_t				alloc_source_line ; /* 申请内存时的源代码文件行号 */
+	size_t				alloc_size ;
 	
 	struct list_head		block_list_node ; /* 内存块链表节点 */
 	
@@ -86,7 +87,9 @@ struct QmallocBlockClass
 #define UNLOCK_SPINLOCK		g_spanlock_status = SPINLOCK_UNLOCK ;
 
 #define INTERNAL_ERROR		-1
-#define HUGE_BLOCK		900
+#define SMALL_MEMBLOCK		1
+#define MEDIUM_MEMBLOCK		4
+#define LARGE_MEMBLOCK		7
 
 #ifdef __cplusplus
 extern }
