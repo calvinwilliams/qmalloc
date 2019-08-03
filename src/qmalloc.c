@@ -203,7 +203,7 @@ void *_qmalloc( size_t size , char *FILE , size_t LINE )
 			return NULL;
 		}
 #if _DEBUG
-		printf( "_qmalloc : malloc SMALL_MEMBLOCK [%zu]+[%zu]bytes ok , p_block_header[%p] p_block_header->data_base[%p]\n" , sizeof(struct QmallocBlockHeader),ceil_size , p_block_header , p_block_header->data_base );
+		printf( "_qmalloc : malloc SMALL_MEMBLOCK [%zu]+[%zu]bytes ok , p_block_header[%p] data_base[%p]\n" , sizeof(struct QmallocBlockHeader),ceil_size , p_block_header , p_block_header->data_base );
 #endif
 		
 		p_block_header->dmz = 0 ;
@@ -232,7 +232,7 @@ void *_qmalloc( size_t size , char *FILE , size_t LINE )
 		
 		LOCK_SPINLOCK
 		
-		p_block_class = g_process_mempool_blocks_class_array+(block_class_index-MAX_THREAD_MEMPOOL_BLOCK_SIZE_CLASS) ;
+		p_block_class = g_process_mempool_blocks_class_array+(block_class_index-MAX_THREAD_MEMPOOL_BLOCK_SIZE_CLASS-1) ;
 		
 #if _DEBUG
 		printf( "_qmalloc : query block class in process mempool , p_block_class[%p]\n" , p_block_class );
@@ -275,7 +275,7 @@ void *_qmalloc( size_t size , char *FILE , size_t LINE )
 			return NULL;
 		}
 #if _DEBUG
-		printf( "_qmalloc : malloc MEDIUM_MEMBLOCK [%zu]+[%zu]bytes ok , p_block_header[%p] p_block_header->data_base[%p]\n" , sizeof(struct QmallocBlockHeader),ceil_size , p_block_header , p_block_header->data_base );
+		printf( "_qmalloc : malloc MEDIUM_MEMBLOCK [%zu]+[%zu]bytes ok , p_block_header[%p] data_base[%p]\n" , sizeof(struct QmallocBlockHeader),ceil_size , p_block_header , p_block_header->data_base );
 #endif
 		
 		p_block_header->dmz = 0 ;
@@ -373,18 +373,20 @@ void _qfree( void *ptr )
 	p_block_class = p_block_header->p_block_class ;
 	
 #if _DEBUG
-	printf( "_qfree : p_block_header[%p] alloc_source_file[%s] alloc_source_line[%zu] data_base[%p] , p_block_class[%p] block_size[%zu]\n" , p_block_header , p_block_header->alloc_source_file , p_block_header->alloc_source_line , p_block_header->data_base , p_block_class , p_block_class->block_size );
+	printf( "_qfree : p_block_header[%p] data_base[%p] alloc_source_file[%s] alloc_source_line[%zu] alloc_size[%zu] , p_block_class[%p] block_size[%zu]\n" , p_block_header , p_block_header->data_base , p_block_header->alloc_source_file , p_block_header->alloc_source_line , p_block_header->alloc_size , p_block_class , p_block_class->block_size );
 #endif
 	
 	nret = _qget_size_class( p_block_class->block_size ) ;
 	if( nret == SMALL_MEMBLOCK )
 	{
-		p_block_header->alloc_source_file = NULL ;
-		p_block_header->alloc_source_line = 0 ;
-		p_block_header->alloc_size = 0 ;
 #if _DEBUG
 		printf( "_qfree : move SMALL_MEMBLOCK [%zu]+[%zu]bytes used block to unused , p_block_header[%p] data_base[%p]\n" , sizeof(struct QmallocBlockHeader),p_block_header->alloc_size , p_block_header , p_block_header->data_base );
 #endif
+		
+		p_block_header->alloc_source_file = NULL ;
+		p_block_header->alloc_source_line = 0 ;
+		p_block_header->alloc_size = 0 ;
+		
 		list_del( & (p_block_header->block_list_node) );
 		list_add_tail( & (p_block_header->block_list_node) , & (p_block_class->unused_block_list) );
 		
@@ -397,12 +399,14 @@ void _qfree( void *ptr )
 	{
 		LOCK_SPINLOCK
 		
-		p_block_header->alloc_source_file = NULL ;
-		p_block_header->alloc_source_line = 0 ;
-		p_block_header->alloc_size = 0 ;
 #if _DEBUG
 		printf( "_qfree : move MEDIUM_MEMBLOCK [%zu]+[%zu]bytes used block to unused , p_block_header[%p] data_base[%p]\n" , sizeof(struct QmallocBlockHeader),p_block_header->alloc_size , p_block_header , p_block_header->data_base );
 #endif
+		
+		p_block_header->alloc_source_file = NULL ;
+		p_block_header->alloc_source_line = 0 ;
+		p_block_header->alloc_size = 0 ;
+		
 		list_del( & (p_block_header->block_list_node) );
 		list_add_tail( & (p_block_header->block_list_node) , & (p_block_class->unused_block_list) );
 		
@@ -552,7 +556,10 @@ static void *_qtravel_block( void *ptr , size_t block_list_offset_of_struct )
 #if _DEBUG2
 		printf( "_qtravel_block : p_block_class[%p]\n" , p_block_class );
 #endif
-		p_block_class++;
+		if( p_block_class == g_thread_mempool_blocks_class_array+MAX_THREAD_MEMPOOL_BLOCK_SIZE_CLASS )
+			p_block_class = g_process_mempool_blocks_class_array ;
+		else
+			p_block_class++;
 		
 		if( g_thread_mempool_blocks_class_array <= p_block_class && p_block_class <= g_thread_mempool_blocks_class_array+MAX_THREAD_MEMPOOL_BLOCK_SIZE_CLASS )
 		{
@@ -576,6 +583,7 @@ static void *_qtravel_block( void *ptr , size_t block_list_offset_of_struct )
 				if( ! list_empty( member_of(p_block_class,struct list_head,block_list_offset_of_struct) ) )
 				{
 					p_block_header = list_first_entry( member_of(p_block_class,struct list_head,block_list_offset_of_struct) , struct QmallocBlockHeader , block_list_node ) ;
+					
 					UNLOCK_SPINLOCK
 #if _DEBUG2
 					printf( "_qtravel_block : return p_block_header[%p] data_base[%p]\n" , p_block_header , p_block_header->data_base );
