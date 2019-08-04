@@ -9,15 +9,16 @@
 #@ c_FILE
 c_FILE		=	\
 			util.c \
-			test_min.c \
+			test_mini.c \
 			test_full.c \
 			press_qmalloc.c \
 			press_malloc.c \
+			press_tcmalloc.c \
 
 ###### 目标文件、安装目录配置区
 include makeinstall
 BIN		=	\
-			test_min	\
+			test_mini	\
 			test_full	\
 			press_qmalloc	\
 			press_malloc	\
@@ -32,7 +33,7 @@ LFLAGS		=	$(_LFLAGS) \
 			-lqmalloc \
 
 ###### 额外宏定义区
-CLEAN_ADDITION	=
+CLEAN_ADDITION	=	press_tcmalloc
 
 PREMAKE		=
 
@@ -49,8 +50,8 @@ PREMAKE		=
 include $(MKTPL2_HOME)/makeobj_$(MKTPL2_OS).inc
 
 ###### 目标文件依赖关系
-test_min		:	test_min.o util.o
-	$(CC) -o $@ test_min.o util.o $(LFLAGS)
+test_mini		:	test_mini.o util.o
+	$(CC) -o $@ test_mini.o util.o $(LFLAGS)
 
 test_full		:	test_full.o util.o
 	$(CC) -o $@ test_full.o util.o $(LFLAGS)
@@ -60,4 +61,7 @@ press_qmalloc		:	press_qmalloc.o util.o
 
 press_malloc		:	press_malloc.o
 	$(CC) -o $@ press_malloc.o $(_LFLAGS)
+
+press_tcmalloc		:	press_tcmalloc.o
+	$(CC) -o $@ press_tcmalloc.o $(_LFLAGS) -ltcmalloc_minimal
 

@@ -14,7 +14,7 @@
 	} \
 	else \
 	{ \
-		printf( "-----------------------------------\n" ); \
+		printf( "--------------------\n" ); \
 		printf( "test_basic : qmalloc [%zu]bytes ...\n" , size ); \
 	} \
 
@@ -42,7 +42,7 @@ int test( int round )
 	char		*data[ 64 ] = { NULL } ;
 	int		i , count ;
 	
-	printf( "=================================== ROUND %d\n" , round );
+	printf( "======================================== ROUND %d\n" , round );
 	
 	i = 0 ;
 	
@@ -127,7 +127,7 @@ int test( int round )
 	count = i ;
 	for( i = 0 ; i < count ; i++ )
 	{
-		printf( "-----------------------------------\n" ); \
+		printf( "--------------------\n" ); \
 		printf( "test_basic : qfree[%p] ...\n" , data[i] );
 		CALL_QFREE(i)
 		printf( "test_basic : qfree[%p] ok\n" , data[i] );

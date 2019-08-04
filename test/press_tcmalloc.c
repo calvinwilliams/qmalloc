@@ -1,6 +1,10 @@
-#include "qmalloc.h"
-
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <errno.h>
 #include <sys/time.h>
+
+#include <gperftools/tcmalloc.h>
 
 #define PRESS_ROUND	10000
 #define PRESS_COUNT	4096
@@ -16,16 +20,16 @@ int press_malloc()
 	{
 		for( j = 0 , size = 1 ; j < PRESS_COUNT ; j++ , size++ )
 		{
-			ptrs[j] = malloc( size ) ;
+			ptrs[j] = tc_malloc( size ) ;
 			if( ptrs[j] == NULL )
 			{
-				printf( "*** ERROR : malloc failed , errno[%d]\n" , errno );
+				printf( "*** ERROR : tc_malloc failed , errno[%d]\n" , errno );
 			}
 		}
 		
 		for( j = 0 ; j < PRESS_COUNT ; j++ )
 		{
-			free( ptrs[j] );
+			tc_free( ptrs[j] );
 		}
 	}
 	
@@ -60,7 +64,7 @@ int main()
 	DIFF_TV( begin_tv , end_tv , diff_tv )
 	printf( "press_malloc ok , elapse[%ld.%06ld]\n" , diff_tv.tv_sec , diff_tv.tv_usec );
 	
-	system("ps aux | grep -v grep | grep -v vi | grep -w press_malloc");
+	system("ps aux | grep -v grep | grep -v vi | grep -w press_tcmalloc");
 	
 	return 0;
 }
