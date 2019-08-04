@@ -60,7 +60,9 @@ int main()
 	DIFF_TV( begin_tv , end_tv , diff_tv )
 	printf( "press_malloc ok , elapse[%ld.%06ld]\n" , diff_tv.tv_sec , diff_tv.tv_usec );
 	
+	/*
 	system("ps aux | grep -v grep | grep -v vi | grep -w press_malloc");
+	*/
 	
 	return 0;
 }

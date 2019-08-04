@@ -77,9 +77,9 @@ int main()
 	DIFF_TV( begin_tv , end_tv , diff_tv )
 	printf( "press_qmalloc ok , elapse[%ld.%06ld]\n" , diff_tv.tv_sec , diff_tv.tv_usec );
 	
+	/*
 	system("ps aux | grep -v grep | grep -v vi | grep -w press_qmalloc");
 	
-	/*
 	qfree_all_unused();
 	printf( "       qstat_used_blocks_count[%zu]\n" , qstat_used_blocks_count() );
 	printf( "  qstat_used_blocks_total_size[%zu]\n" , qstat_used_blocks_total_size() );

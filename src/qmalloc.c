@@ -473,14 +473,14 @@ void *_qrealloc( void *ptr , size_t size , char *FILE , int LINE )
 {
 	void		*ptr2 ;
 	
-	if( ptr == NULL )
-		return NULL;
-	
 	ptr2 = _qmalloc( size , FILE , LINE ) ;
 	if( ptr2 == NULL )
 		return NULL;
 	
-	_qfree( ptr );
+	if( ptr )
+	{
+		_qfree( ptr );
+	}
 	return ptr2;
 }
 
