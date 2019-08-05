@@ -47,7 +47,15 @@ struct list_head {
 void INIT_LIST_HEAD(struct list_head *list);
 void LIST_ADD(struct list_head *_new, struct list_head *head);
 void list_add_tail(struct list_head *_new, struct list_head *head);
+
+#if 0
 void list_del(struct list_head *entry);
+#else
+#define list_del(_p_list_node_) \
+	(_p_list_node_)->prev->next = (_p_list_node_)->next ; \
+	(_p_list_node_)->next->prev = (_p_list_node_)->prev ;
+#endif
+
 void list_replace(struct list_head *old, struct list_head *_new);
 void list_replace_init(struct list_head *old, struct list_head *_new);
 void list_del_init(struct list_head *entry);

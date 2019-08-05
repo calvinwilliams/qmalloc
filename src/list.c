@@ -73,12 +73,14 @@ static void __list_del_entry(struct list_head *entry)
 	__list_del(entry->prev, entry->next);
 }
 
+#if 0
 void list_del(struct list_head *entry)
 {
 	__list_del(entry->prev, entry->next);
 	entry->next = LIST_POISON1;
 	entry->prev = LIST_POISON2;
 }
+#endif
 
 /**
  * list_replace - replace old entry by new one
