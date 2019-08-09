@@ -46,7 +46,15 @@ struct list_head {
 
 void INIT_LIST_HEAD(struct list_head *list);
 void LIST_ADD(struct list_head *_new, struct list_head *head);
+#if 0
 void list_add_tail(struct list_head *_new, struct list_head *head);
+#else
+#define list_add_tail(_new_,_head_) \
+	(_head_)->prev->next = (_new_) ; \
+	(_head_)->prev = (_new_) ; \
+	(_new_)->next = (_head_) ; \
+	(_new_)->prev = (_head_)->prev ;
+#endif
 
 #if 0
 void list_del(struct list_head *entry);
@@ -62,7 +70,12 @@ void list_del_init(struct list_head *entry);
 void list_move(struct list_head *list, struct list_head *head);
 void list_move_tail(struct list_head *list, struct list_head *head);
 int list_is_last(const struct list_head *list, const struct list_head *head);
+#if 0
 int list_empty(const struct list_head *head);
+#else
+#define list_empty(_head_) \
+	( (_head_)->next == (_head_) )
+#endif
 int list_empty_careful(const struct list_head *head);
 void list_rotate_left(struct list_head *head);
 int list_is_singular(const struct list_head *head);

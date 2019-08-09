@@ -44,10 +44,12 @@ void LIST_ADD(struct list_head *new, struct list_head *head)
  * Insert a new entry before the specified head.
  * This is useful for implementing queues.
  */
+#if 0
 void list_add_tail(struct list_head *new, struct list_head *head)
 {
 	__list_add(new, head->prev, head);
 }
+#endif
 
 /*
  * Delete a list entry by making the prev/next entries
@@ -149,10 +151,12 @@ int list_is_last(const struct list_head *list, const struct list_head *head)
  * list_empty - tests whether a list is empty
  * @head: the list to test.
  */
+#if 0
 int list_empty(const struct list_head *head)
 {
 	return READ_ONCE(head->next) == head;
 }
+#endif
 
 /**
  * list_empty_careful - tests whether a list is empty and not being modified

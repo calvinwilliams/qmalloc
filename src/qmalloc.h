@@ -23,6 +23,9 @@ void *_qrealloc( void *ptr , size_t size , char *FILE , int LINE );
 void *_qstrdup( const char *s , char *FILE , int LINE );
 void *_qstrndup( const char *s , size_t n , char *FILE , int LINE );
 
+void qenable_stat();
+void qdisable_stat();
+
 size_t qstat_used_blocks_count();
 size_t qstat_used_blocks_total_size();
 size_t qstat_unused_blocks_count();

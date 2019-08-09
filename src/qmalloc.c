@@ -4,6 +4,8 @@
 #define _DEBUG_QFREE			0
 #define _DEBUG_QTRAVEL			0
 
+unsigned char				g_stat_enable = 0 ;
+
 __thread struct QmallocBlockClass	g_small_mempool_blocks_class_array[ MAX_MEDIUM_MEMPOOL_BLOCK_SIZE_CLASS+1] ; /* 线程全局池小型内存块类数组 */
 __thread size_t				g_small_mempool_blocks_used_count = 0 ;
 __thread size_t				g_small_mempool_blocks_used_total_size = 0 ;
@@ -20,7 +22,7 @@ struct list_head			g_large_mempool_block_list ; /* 大型内存块链表 */
 size_t					g_large_mempool_blocks_used_count = 0 ;
 size_t					g_large_mempool_blocks_used_total_size = 0 ;
 
-int	g_spanlock_status = SPINLOCK_UNLOCK ;
+int					g_spanlock_status = SPINLOCK_UNLOCK ;
 
 static inline int _qinit()
 {
@@ -191,14 +193,17 @@ void *_qmalloc( size_t size , char *FILE , size_t LINE )
 			list_del( & (p_block_header->block_list_node) );
 			list_add_tail( & (p_block_header->block_list_node) , & (p_block_class->used_block_list) );
 			
-			g_small_mempool_blocks_unused_count--;
-			g_small_mempool_blocks_unused_total_size -= block_total_size ;
-			g_small_mempool_blocks_used_count++;
-			g_small_mempool_blocks_used_total_size += block_total_size ;
-			
-			p_block_header->alloc_source_file = FILE ;
-			p_block_header->alloc_source_line = LINE ;
-			p_block_header->alloc_size = size ;
+			if( g_stat_enable )
+			{
+				g_small_mempool_blocks_unused_count--;
+				g_small_mempool_blocks_unused_total_size -= block_total_size ;
+				g_small_mempool_blocks_used_count++;
+				g_small_mempool_blocks_used_total_size += block_total_size ;
+				
+				p_block_header->alloc_source_file = FILE ;
+				p_block_header->alloc_source_line = LINE ;
+				p_block_header->alloc_size = size ;
+			}
 			
 #if _DEBUG_QMALLOC
 			printf( "_qmalloc : return p_block_header[%p] data_base[%p]\n" , p_block_header , p_block_header->data_base );
@@ -219,15 +224,19 @@ void *_qmalloc( size_t size , char *FILE , size_t LINE )
 		printf( "_qmalloc : malloc SMALL_MEMBLOCK [%zu]+[%zu]bytes ok , p_block_header[%p] data_base[%p]\n" , sizeof(struct QmallocBlockHeader),ceil_size , p_block_header , p_block_header->data_base );
 #endif
 		
-		p_block_header->dmz = 0 ;
 		p_block_header->p_block_class = p_block_class ;
-		p_block_header->alloc_source_file = FILE ;
-		p_block_header->alloc_source_line = LINE ;
-		p_block_header->alloc_size = size ;
-		list_add_tail( & (p_block_header->block_list_node) , & (p_block_class->used_block_list) );
 		
-		g_small_mempool_blocks_used_count++;
-		g_small_mempool_blocks_used_total_size += block_total_size ;
+		if( g_stat_enable )
+		{
+			p_block_header->alloc_source_file = FILE ;
+			p_block_header->alloc_source_line = LINE ;
+			p_block_header->alloc_size = size ;
+			
+			g_small_mempool_blocks_used_count++;
+			g_small_mempool_blocks_used_total_size += block_total_size ;
+		}
+		
+		list_add_tail( & (p_block_header->block_list_node) , & (p_block_class->used_block_list) );
 		
 #if _DEBUG_QMALLOC
 		printf( "_qmalloc : return p_block_header[%p] data_base[%p]\n" , p_block_header , p_block_header->data_base );
@@ -259,14 +268,17 @@ void *_qmalloc( size_t size , char *FILE , size_t LINE )
 				list_del( & (p_block_header->block_list_node) );
 				list_add_tail( & (p_block_header->block_list_node) , & (p_block_class->used_block_list) );
 				
-				g_small_mempool_blocks_unused_count--;
-				g_small_mempool_blocks_unused_total_size -= block_total_size ;
-				g_small_mempool_blocks_used_count++;
-				g_small_mempool_blocks_used_total_size += block_total_size ;
-				
-				p_block_header->alloc_source_file = FILE ;
-				p_block_header->alloc_source_line = LINE ;
-				p_block_header->alloc_size = size ;
+				if( g_stat_enable )
+				{
+					g_small_mempool_blocks_unused_count--;
+					g_small_mempool_blocks_unused_total_size -= block_total_size ;
+					g_small_mempool_blocks_used_count++;
+					g_small_mempool_blocks_used_total_size += block_total_size ;
+					
+					p_block_header->alloc_source_file = FILE ;
+					p_block_header->alloc_source_line = LINE ;
+					p_block_header->alloc_size = size ;
+				}
 				
 #if _DEBUG_QMALLOC
 				printf( "_qmalloc : return p_block_header[%p] data_base[%p]\n" , p_block_header , p_block_header->data_base );
@@ -290,20 +302,23 @@ void *_qmalloc( size_t size , char *FILE , size_t LINE )
 		printf( "_qmalloc : malloc MEDIUM_MEMBLOCK [%zu]+[%zu]bytes ok , p_block_header[%p] data_base[%p]\n" , sizeof(struct QmallocBlockHeader),ceil_size , p_block_header , p_block_header->data_base );
 #endif
 		
-		p_block_header->dmz = 0 ;
-		p_block_header->p_block_class = p_block_class ;
-		p_block_header->alloc_source_file = FILE ;
-		p_block_header->alloc_source_line = LINE ;
-		p_block_header->alloc_size = size ;
-		
 		LOCK_SPINLOCK
 		{
 			list_add_tail( & (p_block_header->block_list_node) , & (p_block_class->used_block_list) );
-			
+		}
+		UNLOCK_SPINLOCK
+		
+		p_block_header->p_block_class = p_block_class ;
+		
+		if( g_stat_enable )
+		{
+			p_block_header->alloc_source_file = FILE ;
+			p_block_header->alloc_source_line = LINE ;
+			p_block_header->alloc_size = size ;
+				
 			g_small_mempool_blocks_used_count++;
 			g_small_mempool_blocks_used_total_size += block_total_size ;
 		}
-		UNLOCK_SPINLOCK
 		
 #if _DEBUG_QMALLOC
 		printf( "_qmalloc : return p_block_header[%p] data_base[%p]\n" , p_block_header , p_block_header->data_base );
@@ -331,20 +346,22 @@ void *_qmalloc( size_t size , char *FILE , size_t LINE )
 		printf( "_qmalloc : malloc LARGE_MEMBLOCK [%zu]+[%zu]bytes ok\n" , sizeof(struct QmallocBlockHeader),size );
 #endif
 		
-		p_block_header->dmz = 0 ;
-		p_block_header->p_block_class = NULL ;
-		p_block_header->alloc_source_file = FILE ;
-		p_block_header->alloc_source_line = LINE ;
-		p_block_header->alloc_size = size ;
-		
 		LOCK_SPINLOCK
 		{
 			list_add_tail( & (p_block_header->block_list_node) , & g_large_mempool_block_list );
+		}
+		UNLOCK_SPINLOCK
+		
+		if( g_stat_enable )
+		{
+			p_block_header->p_block_class = NULL ;
+			p_block_header->alloc_source_file = FILE ;
+			p_block_header->alloc_source_line = LINE ;
+			p_block_header->alloc_size = size ;
 			
 			g_large_mempool_blocks_used_count++;
 			g_large_mempool_blocks_used_total_size += block_total_size ;
 		}
-		UNLOCK_SPINLOCK
 		
 #if _DEBUG_QMALLOC
 		printf( "_qmalloc : return p_block_header[%p] data_base[%p]\n" , p_block_header , p_block_header->data_base );
@@ -382,6 +399,7 @@ void _qfree( void *ptr )
 	size_t				block_total_size ;
 	
 	int				nret ;
+	
 #if _DEBUG_QFREE
 	printf( "_qfree : ptr[%p]\n" , ptr );
 #endif
@@ -404,17 +422,20 @@ void _qfree( void *ptr )
 		
 		block_total_size = sizeof(struct QmallocBlockHeader)+p_block_class->block_size ;
 		
-		p_block_header->alloc_source_file = NULL ;
-		p_block_header->alloc_source_line = 0 ;
-		p_block_header->alloc_size = 0 ;
-		
 		list_del( & (p_block_header->block_list_node) );
 		list_add_tail( & (p_block_header->block_list_node) , & (p_block_class->unused_block_list) );
 		
-		g_small_mempool_blocks_used_count--;
-		g_small_mempool_blocks_used_total_size -= block_total_size ;
-		g_small_mempool_blocks_unused_count++;
-		g_small_mempool_blocks_unused_total_size += block_total_size ;
+		if( g_stat_enable )
+		{
+			p_block_header->alloc_source_file = NULL ;
+			p_block_header->alloc_source_line = 0 ;
+			p_block_header->alloc_size = 0 ;
+			
+			g_small_mempool_blocks_used_count--;
+			g_small_mempool_blocks_used_total_size -= block_total_size ;
+			g_small_mempool_blocks_unused_count++;
+			g_small_mempool_blocks_unused_total_size += block_total_size ;
+		}
 	}
 	else if( nret == MEDIUM_MEMBLOCK )
 	{
@@ -424,21 +445,24 @@ void _qfree( void *ptr )
 		
 		block_total_size = sizeof(struct QmallocBlockHeader)+p_block_class->block_size ;
 		
-		p_block_header->alloc_source_file = NULL ;
-		p_block_header->alloc_source_line = 0 ;
-		p_block_header->alloc_size = 0 ;
-		
 		LOCK_SPINLOCK
 		{
 			list_del( & (p_block_header->block_list_node) );
 			list_add_tail( & (p_block_header->block_list_node) , & (p_block_class->unused_block_list) );
+		}
+		UNLOCK_SPINLOCK
+		
+		if( g_stat_enable )
+		{
+			p_block_header->alloc_source_file = NULL ;
+			p_block_header->alloc_source_line = 0 ;
+			p_block_header->alloc_size = 0 ;
 			
 			g_medium_mempool_blocks_used_count--;
 			g_medium_mempool_blocks_used_total_size -= block_total_size ;
 			g_medium_mempool_blocks_unused_count++;
 			g_medium_mempool_blocks_unused_total_size += block_total_size ;
 		}
-		UNLOCK_SPINLOCK
 	}
 	else if( nret == LARGE_MEMBLOCK )
 	{
@@ -452,11 +476,14 @@ void _qfree( void *ptr )
 		{
 			list_del( & (p_block_header->block_list_node) );
 			free(p_block_header);
-			
+		}
+		UNLOCK_SPINLOCK
+		
+		if( g_stat_enable )
+		{
 			g_large_mempool_blocks_used_count--;
 			g_large_mempool_blocks_used_total_size -= block_total_size ;
 		}
-		UNLOCK_SPINLOCK
 	}
 	else
 	{
@@ -509,6 +536,18 @@ void *_qstrndup( const char *s , size_t n , char *FILE , int LINE )
 	p[n] = '\0' ;
 	
 	return p;
+}
+
+void qenable_stat()
+{
+	g_stat_enable = 1 ;
+	return;
+}
+
+void qdisable_stat()
+{
+	g_stat_enable = 0 ;
+	return;
 }
 
 size_t qstat_used_blocks_count()
