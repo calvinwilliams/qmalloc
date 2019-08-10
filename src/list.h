@@ -51,9 +51,10 @@ void list_add_tail(struct list_head *_new, struct list_head *head);
 #else
 #define list_add_tail(_new_,_head_) \
 	(_head_)->prev->next = (_new_) ; \
-	(_head_)->prev = (_new_) ; \
 	(_new_)->next = (_head_) ; \
-	(_new_)->prev = (_head_)->prev ;
+	(_new_)->prev = (_head_)->prev ; \
+	(_head_)->prev = (_new_) ; \
+
 #endif
 
 #if 0
@@ -61,7 +62,8 @@ void list_del(struct list_head *entry);
 #else
 #define list_del(_p_list_node_) \
 	(_p_list_node_)->prev->next = (_p_list_node_)->next ; \
-	(_p_list_node_)->next->prev = (_p_list_node_)->prev ;
+	(_p_list_node_)->next->prev = (_p_list_node_)->prev ; \
+
 #endif
 
 void list_replace(struct list_head *old, struct list_head *_new);
@@ -74,7 +76,8 @@ int list_is_last(const struct list_head *list, const struct list_head *head);
 int list_empty(const struct list_head *head);
 #else
 #define list_empty(_head_) \
-	( (_head_)->next == (_head_) )
+	( (_head_)->next == (_head_) ) \
+
 #endif
 int list_empty_careful(const struct list_head *head);
 void list_rotate_left(struct list_head *head);

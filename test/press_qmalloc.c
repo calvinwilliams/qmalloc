@@ -4,11 +4,16 @@
 #include <sys/time.h>
 
 /*
-gcc -g -fPIC -O2 -Wall -Werror -fno-strict-aliasing -o press_qmalloc press_qmalloc.o -L. -L/home/calvin/lib ../src/qmalloc.o ../src/rbtree.o  -pg
+gcc -g -pg -fPIC -O2 -Wall -Werror -fno-strict-aliasing -I. -c list.c
+gcc -g -pg -fPIC -O2 -Wall -Werror -fno-strict-aliasing -I. -c qmalloc.c
+
+gcc -g -pg -fPIC -O2 -Wall -Werror -fno-strict-aliasing -I. -c press_qmalloc.c
+gcc -g -pg -fPIC -O2 -Wall -Werror -fno-strict-aliasing -o press_qmalloc press_qmalloc.o util.o qmalloc.o list.o
+
 ./press_qmalloc
-gprof ./press_qmalloc gmon.out -p
-gprof ./press_qmalloc gmon.out -q
-gprof ./press_qmalloc gmon.out -A
+
+gprof ./press_qmalloc gmon.out -a
+gprof ./press_qmalloc gmon.out -l --inline-file-names
 */
 
 #define PRESS_ROUND	10000
@@ -85,8 +90,6 @@ int main()
 	printf( "  qstat_used_blocks_total_size[%zu]\n" , qstat_used_blocks_total_size() );
 	printf( "     qstat_unused_blocks_count[%zu]\n" , qstat_unused_blocks_count() );
 	printf( "qstat_unused_blocks_total_size[%zu]\n" , qstat_unused_blocks_total_size() );
-	
-	system("ps aux | grep -v grep | grep -v vi | grep -w press_qmalloc");
 	*/
 	
 	return 0;
