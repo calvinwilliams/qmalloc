@@ -1,4 +1,5 @@
 #include "qmalloc.h"
+#include "util.h"
 
 #include <sys/time.h>
 
@@ -11,65 +12,7 @@ gprof ./press_qmalloc gmon.out -A
 */
 
 #define PRESS_ROUND	10000
-#define PRESS_COUNT	1024
-
-void travel_by_size()
-{
-	char		*data = NULL ;
-	
-	printf( "--- travel_by_size --- used ---- blocks_count[%zu] blocks_total_size[%zu]\n" , _qstat_used_blocks_count() , _qstat_used_blocks_total_size() );
-	
-	data = NULL ;
-	while(1)
-	{
-		data = _qtravel_used_by_size(data) ;
-		if( data == NULL )
-			break;
-		printf( "  USED - size[%zu] data[%p] alloc_source_file[%s] alloc_source_line[%d] free_source_file[%s] free_source_line[%d]\n" , _qget_size(data) , data , _qget_alloc_source_file(data) , _qget_alloc_source_line(data) , _qget_free_source_file(data) , _qget_free_source_line(data) );
-	}
-	
-	printf( "--- travel_by_size --- unused --- blocks_count[%zu] blocks_total_size[%zu]\n" , _qstat_unused_blocks_count() , _qstat_unused_blocks_total_size() );
-	
-	data = NULL ;
-	while(1)
-	{
-		data = _qtravel_unused_by_size(data) ;
-		if( data == NULL )
-			break;
-		printf( "UNUSED - size[%zu] data[%p] alloc_source_file[%s] alloc_source_line[%d] free_source_file[%s] free_source_line[%d]\n" , _qget_size(data) , data , _qget_alloc_source_file(data) , _qget_alloc_source_line(data) , _qget_free_source_file(data) , _qget_free_source_line(data) );
-	}
-	
-	return;
-}
-
-void travel_by_addr()
-{
-	char		*data = NULL ;
-	
-	printf( "--- travel_by_addr --- used --- blocks_count[%zu] blocks_total_size[%zu]\n" , _qstat_used_blocks_count() , _qstat_used_blocks_total_size() );
-	
-	data = NULL ;
-	while(1)
-	{
-		data = _qtravel_used_by_addr(data) ;
-		if( data == NULL )
-			break;
-		printf( "  USED - size[%zu] data[%p] alloc_source_file[%s] alloc_source_line[%d] free_source_file[%s] free_source_line[%d]\n" , _qget_size(data) , data , _qget_alloc_source_file(data) , _qget_alloc_source_line(data) , _qget_free_source_file(data) , _qget_free_source_line(data) );
-	}
-	
-	printf( "--- travel_by_addr --- unused --- blocks_count[%zu] blocks_total_size[%zu]\n" , _qstat_unused_blocks_count() , _qstat_unused_blocks_total_size() );
-	
-	data = NULL ;
-	while(1)
-	{
-		data = _qtravel_unused_by_addr(data) ;
-		if( data == NULL )
-			break;
-		printf( "UNUSED - size[%zu] data[%p] alloc_source_file[%s] alloc_source_line[%d] free_source_file[%s] free_source_line[%d]\n" , _qget_size(data) , data , _qget_alloc_source_file(data) , _qget_alloc_source_line(data) , _qget_free_source_file(data) , _qget_free_source_line(data) );
-	}
-	
-	return;
-}
+#define PRESS_COUNT	4096
 
 int press_qmalloc()
 {
@@ -90,8 +33,7 @@ int press_qmalloc()
 		}
 		
 		/*
-		travel_by_size();
-		travel_by_addr();
+		travel_blocks();
 		*/
 		
 		for( j = 0 ; j < PRESS_COUNT ; j++ )
@@ -100,8 +42,7 @@ int press_qmalloc()
 		}
 		
 		/*
-		travel_by_size();
-		travel_by_addr();
+		travel_blocks();
 		*/
 	}
 	
@@ -136,7 +77,17 @@ int main()
 	DIFF_TV( begin_tv , end_tv , diff_tv )
 	printf( "press_qmalloc ok , elapse[%ld.%06ld]\n" , diff_tv.tv_sec , diff_tv.tv_usec );
 	
-	_qfree_all_unused();
+	/*
+	system("ps aux | grep -v grep | grep -v vi | grep -w press_qmalloc");
+	
+	qfree_all_unused();
+	printf( "       qstat_used_blocks_count[%zu]\n" , qstat_used_blocks_count() );
+	printf( "  qstat_used_blocks_total_size[%zu]\n" , qstat_used_blocks_total_size() );
+	printf( "     qstat_unused_blocks_count[%zu]\n" , qstat_unused_blocks_count() );
+	printf( "qstat_unused_blocks_total_size[%zu]\n" , qstat_unused_blocks_total_size() );
+	
+	system("ps aux | grep -v grep | grep -v vi | grep -w press_qmalloc");
+	*/
 	
 	return 0;
 }
