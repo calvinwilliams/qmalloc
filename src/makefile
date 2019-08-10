@@ -8,7 +8,7 @@
 ###### 源文件配置区
 #@ c_FILE
 c_FILE		=	\
-			rbtree.c \
+			list.c \
 			qmalloc.c \
 
 ###### 目标文件、安装目录配置区
