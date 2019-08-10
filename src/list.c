@@ -12,6 +12,7 @@ void INIT_LIST_HEAD(struct list_head *list)
  * This is only for internal list manipulation where we know
  * the prev/next entries already!
  */
+#if 0
 static void __list_add(struct list_head *new,
 			      struct list_head *prev,
 			      struct list_head *next)
@@ -21,6 +22,7 @@ static void __list_add(struct list_head *new,
 	new->prev = prev;
 	WRITE_ONCE(prev->next, new);
 }
+#endif
 
 /**
  * list_add - add a new entry
@@ -30,11 +32,12 @@ static void __list_add(struct list_head *new,
  * Insert a new entry after the specified head.
  * This is good for implementing stacks.
  */
+#if 0
 void LIST_ADD(struct list_head *new, struct list_head *head)
 {
 	__list_add(new, head, head->next);
 }
-
+#endif
 
 /**
  * list_add_tail - add a new entry

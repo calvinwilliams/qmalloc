@@ -45,7 +45,18 @@ struct list_head {
 	struct list_head name = LIST_HEAD_INIT(name)
 
 void INIT_LIST_HEAD(struct list_head *list);
+
+#if 0
 void LIST_ADD(struct list_head *_new, struct list_head *head);
+#else
+#define LIST_ADD(_new_,_head_) \
+	(_head_)->next->prev = (_new_) ; \
+	(_new_)->next = (_head_)->next ; \
+	(_new_)->prev = (_head_) ; \
+	(_head_)->next = (_new_) ; \
+
+#endif
+
 #if 0
 void list_add_tail(struct list_head *_new, struct list_head *head);
 #else

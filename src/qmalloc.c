@@ -184,7 +184,7 @@ void *_qmalloc( size_t size , char *FILE , size_t LINE )
 			printf( "_qmalloc : move unused block to used , p_block_header[%p] data_base[%p]\n" , p_block_header , p_block_header->data_base );
 #endif
 			list_del( & (p_block_header->block_list_node) );
-			list_add_tail( & (p_block_header->block_list_node) , & (p_block_class->used_block_list) );
+			LIST_ADD( & (p_block_header->block_list_node) , & (p_block_class->used_block_list) );
 			
 			if( g_stat_enable )
 			{
@@ -229,7 +229,7 @@ void *_qmalloc( size_t size , char *FILE , size_t LINE )
 			g_small_mempool_blocks_used_total_size += block_total_size ;
 		}
 		
-		list_add_tail( & (p_block_header->block_list_node) , & (p_block_class->used_block_list) );
+		LIST_ADD( & (p_block_header->block_list_node) , & (p_block_class->used_block_list) );
 		
 #if _DEBUG_QMALLOC
 		printf( "_qmalloc : return p_block_header[%p] data_base[%p]\n" , p_block_header , p_block_header->data_base );
@@ -259,7 +259,7 @@ void *_qmalloc( size_t size , char *FILE , size_t LINE )
 				printf( "_qmalloc : move unused block to used , p_block_header[%p] data_base[%p]\n" , p_block_header , p_block_header->data_base );
 #endif
 				list_del( & (p_block_header->block_list_node) );
-				list_add_tail( & (p_block_header->block_list_node) , & (p_block_class->used_block_list) );
+				LIST_ADD( & (p_block_header->block_list_node) , & (p_block_class->used_block_list) );
 				
 				if( g_stat_enable )
 				{
@@ -297,7 +297,7 @@ void *_qmalloc( size_t size , char *FILE , size_t LINE )
 		
 		LOCK_SPINLOCK
 		{
-			list_add_tail( & (p_block_header->block_list_node) , & (p_block_class->used_block_list) );
+			LIST_ADD( & (p_block_header->block_list_node) , & (p_block_class->used_block_list) );
 		}
 		UNLOCK_SPINLOCK
 		
@@ -341,7 +341,7 @@ void *_qmalloc( size_t size , char *FILE , size_t LINE )
 		
 		LOCK_SPINLOCK
 		{
-			list_add_tail( & (p_block_header->block_list_node) , & g_large_mempool_block_list );
+			LIST_ADD( & (p_block_header->block_list_node) , & g_large_mempool_block_list );
 		}
 		UNLOCK_SPINLOCK
 		
@@ -423,7 +423,7 @@ void _qfree( void *ptr )
 		block_total_size = sizeof(struct QmallocBlockHeader)+p_block_class->block_size ;
 		
 		list_del( & (p_block_header->block_list_node) );
-		list_add_tail( & (p_block_header->block_list_node) , & (p_block_class->unused_block_list) );
+		LIST_ADD( & (p_block_header->block_list_node) , & (p_block_class->unused_block_list) );
 		
 		if( g_stat_enable )
 		{
@@ -448,7 +448,7 @@ void _qfree( void *ptr )
 		LOCK_SPINLOCK
 		{
 			list_del( & (p_block_header->block_list_node) );
-			list_add_tail( & (p_block_header->block_list_node) , & (p_block_class->unused_block_list) );
+			LIST_ADD( & (p_block_header->block_list_node) , & (p_block_class->unused_block_list) );
 		}
 		UNLOCK_SPINLOCK
 		
