@@ -14,7 +14,7 @@ int press_malloc()
 	int		round ;
 	int		j ;
 	int		size ;
-	void		*ptrs[PRESS_COUNT] = { NULL } ;
+	char		*ptrs[PRESS_COUNT] = { NULL } ;
 	
 	for( round = 1 ; round <= PRESS_ROUND ; round++ )
 	{
@@ -25,6 +25,8 @@ int press_malloc()
 			{
 				printf( "*** ERROR : tc_malloc failed , errno[%d]\n" , errno );
 			}
+			ptrs[j][0] = 'X' ;
+			ptrs[j][size-1] = 'Y' ;
 		}
 		
 		for( j = 0 ; j < PRESS_COUNT ; j++ )

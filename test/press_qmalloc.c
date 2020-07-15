@@ -24,7 +24,7 @@ int press_qmalloc()
 	int		round ;
 	int		j ;
 	int		size ;
-	void		*ptrs[PRESS_COUNT] = { NULL } ;
+	char		*ptrs[PRESS_COUNT] = { NULL } ;
 	
 	for( round = 1 ; round <= PRESS_ROUND ; round++ )
 	{
@@ -35,6 +35,8 @@ int press_qmalloc()
 			{
 				printf( "*** ERROR : qmalloc failed , errno[%d]\n" , errno );
 			}
+			ptrs[j][0] = 'X' ;
+			ptrs[j][size-1] = 'Y' ;
 		}
 		
 		/*
